@@ -1,0 +1,16 @@
+{
+	"$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+	"name": "io.github.creative-int/webs",
+	"description": "Connect agents to Webs memory over remote MCP: save, recall, ask, watch, run, readiness, and on-demand context.",
+	"version": "0.1.0",
+	"repository": {
+		"url": "https://github.com/creative-int/webs-plugins",
+		"source": "github"
+	},
+	"remotes": [
+		{
+			"type": "streamable-http",
+			"url": "https://webs.creative-int.com/mcp"
+		}
+	]
+}

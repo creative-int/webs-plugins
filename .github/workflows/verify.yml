@@ -1,0 +1,34 @@
+name: verify
+
+on:
+  push:
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+    branches: [main]
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+
+jobs:
+  verify:
+    runs-on: [self-hosted, macOS, ARM64, cic-macbook-pro]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generated files are up to date
+        run: pnpm run check:generated
+      - name: Typecheck
+        run: pnpm run typecheck
+      - name: Build
+        run: pnpm run build
+      - name: Help
+        run: pnpm run help
+      - name: Smoke
+        run: pnpm run smoke

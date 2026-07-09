@@ -1,0 +1,116 @@
+{
+	"name": "webs",
+	"version": "0.1.0",
+	"description": "Connect agents to Webs memory over remote MCP: save, recall, ask, watch, run, readiness, and on-demand context.",
+	"author": {
+		"name": "creative-int",
+		"email": "support@creative-int.com"
+	},
+	"homepage": "https://webs.creative-int.com",
+	"repository": "https://github.com/creative-int/webs-plugins.git",
+	"license": "MIT",
+	"keywords": [
+		"webs",
+		"mcp",
+		"memory",
+		"recall",
+		"agent-context",
+		"research",
+		"citations"
+	],
+	"displayName": "Webs",
+	"skills": "./skills",
+	"mcpServers": "./.mcp.json",
+	"metadata": {
+		"repoProfile": "agent-plugin-companion",
+		"companionOf": "webs",
+		"tools": [
+			{
+				"name": "save",
+				"scope": "webs.save",
+				"description": "Save URL(s) or content into analyzed Webs memory. Agent deposits carry task and why."
+			},
+			{
+				"name": "recall",
+				"scope": "webs.recall",
+				"description": "Retrieve saved memory with hybrid semantic and lexical search, citations, excerpts, and scores."
+			},
+			{
+				"name": "context",
+				"scope": "webs.context",
+				"description": "Return a small on-demand task-affinity context packet for an agent. Never automatic injection."
+			},
+			{
+				"name": "ask",
+				"scope": "webs.ask",
+				"description": "Answer questions over saved memory with citations and modes for saved-only, saved-memory, or fresh-then-saved."
+			},
+			{
+				"name": "watch",
+				"scope": "webs.watch",
+				"description": "Create or list monitors that keep standing topics feeding memory."
+			},
+			{
+				"name": "run",
+				"scope": "webs.run",
+				"description": "Start durable research, compare, or monitor-snapshot runs and return a poll contract."
+			},
+			{
+				"name": "readiness",
+				"scope": "webs.readiness",
+				"description": "Probe auth, entitlement, scope, and tool availability for the Webs MCP connection."
+			}
+		],
+		"scopes": [
+			"webs.save",
+			"webs.recall",
+			"webs.context",
+			"webs.ask",
+			"webs.watch",
+			"webs.run",
+			"webs.readiness"
+		],
+		"skills": [
+			{
+				"name": "webs-memory",
+				"aliases": [
+					"webs",
+					"memory",
+					"have-we-seen"
+				],
+				"description": "Judgment rule for deciding when to use Webs memory."
+			},
+			{
+				"name": "webs-save",
+				"aliases": [
+					"save-memory",
+					"webs-save"
+				],
+				"description": "Save durable findings with task and why."
+			},
+			{
+				"name": "webs-recall-ask",
+				"aliases": [
+					"webs-recall",
+					"webs-ask",
+					"ask-memory"
+				],
+				"description": "Choose recall versus ask versus fresh search."
+			},
+			{
+				"name": "webs-context",
+				"aliases": [
+					"agent-context",
+					"context-packet"
+				],
+				"description": "Request small on-demand context packets without hooks."
+			}
+		],
+		"readiness": "Remote MCP endpoint configured at https://webs.creative-int.com/mcp. Auth is client-owned; bearer tokens stay in client credential stores or environment variables, never in this repository.",
+		"mcp": {
+			"id": "webs",
+			"url": "https://webs.creative-int.com/mcp",
+			"transport": "streamable-http"
+		}
+	}
+}
