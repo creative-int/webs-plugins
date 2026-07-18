@@ -26,6 +26,11 @@ export type WebsOAuthScope =
 	| "watch"
 	| "run";
 
+export type McpServerConfig = {
+	type: "http";
+	url: "https://webs.creative-int.com/mcp";
+};
+
 export interface WebsConfig {
 	/** Machine-facing id (plugin name, MCP server key). */
 	name: "webs";
@@ -42,9 +47,8 @@ export interface WebsConfig {
 	category: "Productivity";
 	keywords: string[];
 	logo: string;
-	mcp: {
+	mcp: McpServerConfig & {
 		id: string;
-		url: string;
 		transport: "streamable-http";
 	};
 	pi: {
@@ -81,7 +85,7 @@ export interface WebsConfig {
 export const webs = {
 	name: "webs",
 	displayName: "Webs",
-	version: "0.1.0",
+	version: "0.1.1",
 	tagline: "Give your agents the web as memory.",
 	shortDescription:
 		"Connect agents to Webs memory over remote MCP: save, recall, ask, watch, run, readiness, and on-demand context.",
@@ -104,6 +108,7 @@ export const webs = {
 	logo: "./assets/logo.png",
 	mcp: {
 		id: "webs",
+		type: "http",
 		url: "https://webs.creative-int.com/mcp",
 		transport: "streamable-http",
 	},

@@ -31,6 +31,7 @@ Add Webs as a remote Streamable HTTP server, then invoke `readiness` to begin cl
 {
 	"mcpServers": {
 		"webs": {
+			"type": "http",
 			"url": "https://webs.creative-int.com/mcp",
 			"transport": "streamable-http"
 		}

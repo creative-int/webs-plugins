@@ -109,10 +109,17 @@ function checkPiContract() {
 }
 
 function checkGeneratedManifestShape() {
-	const mcp = readJson<{ mcpServers?: Record<string, { url?: string; transport?: string }> }>(
-		".mcp.json",
-	);
+	const mcp = readJson<{
+		mcpServers?: Record<
+			string,
+			{ type?: string; url?: string; transport?: string }
+		>;
+	}>(".mcp.json");
 	const mcpServer = mcp.mcpServers?.[webs.mcp.id];
+	assert(
+		mcpServer?.type === "http",
+		'.mcp.json must declare type "http" for Claude Code',
+	);
 	assert(mcpServer?.url === webs.mcp.url, ".mcp.json uses the wrong MCP URL");
 	assert(
 		mcpServer.transport === webs.mcp.transport,
