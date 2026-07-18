@@ -37,9 +37,9 @@ Options:
 export const installClients = [
 	{
 		id: "mcp",
-		label: "Any MCP client (.mcp.json)",
+		label: "Any MCP client (generic .mcp.json)",
 		blurb:
-			"Add Webs as a Streamable HTTP MCP server. When your client prompts, complete auth; the bearer belongs in the client credential store, never in this repo.",
+			"Add Webs as a remote Streamable HTTP server, then invoke `readiness` to begin client-owned OAuth. Never paste a bearer into this repository.",
 		steps: [
 			json({
 				mcpServers: {
@@ -55,14 +55,14 @@ export const installClients = [
 		id: "skills",
 		label: "Any agent (npx skills)",
 		blurb:
-			"Installs the Webs memory skill pack for skill-aware agents. The skills teach judgment; the live MCP endpoint remains the memory surface.",
+			"Install the four Webs judgment skills. This does not connect MCP by itself; also use the generic MCP configuration above unless your agent already has the Webs plugin.",
 		steps: [`npx skills add ${slug()}`],
 	},
 	{
 		id: "claude-code",
 		label: "Claude Code",
 		blurb:
-			"Add the marketplace, install the Webs plugin, then authenticate the MCP connection before the first memory call.",
+			"Add the marketplace and install the Webs plugin. Invoke `readiness` and complete the Webs-owned OAuth flow when Claude prompts.",
 		steps: [
 			`/plugin marketplace add ${slug()}`,
 			`/plugin install ${webs.name}@${webs.name}`,
@@ -72,15 +72,15 @@ export const installClients = [
 		id: "codex",
 		label: "Codex",
 		blurb:
-			"Add this repo as a Codex plugin marketplace, install from /plugins, then authenticate the MCP connection.",
+			"Add this repository as a Codex plugin marketplace, install Webs from `/plugins`, then invoke `readiness` and complete OAuth.",
 		steps: [`codex plugin marketplace add ${slug()}`],
 	},
 	{
 		id: "cursor",
 		label: "Cursor",
 		blurb:
-			"Install Webs from the Cursor plugin marketplace, then authenticate the MCP connection.",
-		steps: [`Cursor -> Settings -> Plugins -> Add marketplace -> ${slug()}`],
+			"Install Webs from the Cursor plugin marketplace, then invoke `readiness` and complete OAuth when Cursor prompts.",
+		steps: [`Cursor → Settings → Plugins → Add marketplace → ${slug()}`],
 	},
 ] as const;
 
@@ -91,7 +91,7 @@ function slug() {
 function toolSummary() {
 	return webs.tools.map((tool) => ({
 		name: tool.name,
-		scope: tool.scope,
+		protectedBy: tool.protectedBy,
 		description: tool.description,
 	}));
 }
@@ -109,7 +109,7 @@ function pluginMetadata() {
 		repoProfile: "agent-plugin-companion",
 		companionOf: "webs",
 		tools: toolSummary(),
-		scopes: webs.tools.map((tool) => tool.scope),
+		oauthScopes: webs.oauthScopes,
 		skills: skillSummary(),
 		readiness: webs.readiness.status,
 		mcp: {
@@ -226,6 +226,16 @@ function readmeInstallBlock() {
 				: ["```sh", ...client.steps, "```"].join("\n");
 		return `### ${client.label}\n\n${client.blurb}\n\n${body}`;
 	});
+	lines.push(`### Quickstart: authenticate and verify
+
+Every install path converges on the same remote MCP server and Webs-owned OAuth flow:
+
+1. If you installed only with \`npx skills\`, also add the generic MCP configuration above. Skills teach judgment; MCP provides the seven live tools.
+2. Invoke \`readiness\`. Complete OAuth in the client-owned browser or credential flow when prompted. The intended connection requests \`${webs.oauthScopes.join(" ")}\`; never copy a bearer into this repository.
+3. Invoke \`readiness\` again. Treat the connection as ready only when Webs confirms auth, entitlement, granted scopes, and tool availability.
+4. Exercise memory deliberately: call \`context\` with \`{"task":"...","why":"..."}\` only when prior memory may help; call \`recall\` with \`{"query":"..."}\`; then save a real source URL with \`{"urls":["https://example.com"],"task":"...","why":"..."}\`.
+
+Use \`ask\` when you need a cited answer rather than retrieval results. Replace the example URL before saving.`);
 	return lines.join("\n\n");
 }
 

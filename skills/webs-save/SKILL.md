@@ -1,6 +1,6 @@
 ---
 name: webs-save
-description: This skill should be used when an agent has a durable web finding, source, decision, or research result that should become Webs memory.
+description: This skill should be used when an agent has one or more durable source URLs that should become Webs memory.
 aliases:
   - save-memory
   - webs-save
@@ -9,18 +9,18 @@ author: Webs
 
 # Webs save
 
-Use Webs `save` to turn useful web material or distilled findings into memory
-that humans and agents can recall later.
+Use Webs `save` to turn useful source URLs into memory that humans and agents
+can recall later. The public MCP schema accepts URLs only.
 
 Connect to the Webs MCP server at `https://webs.creative-int.com/mcp`.
 
 ## Save when
 
-- A source-backed research conclusion should be remembered.
-- A repo, provider, or product truth is non-obvious and likely to matter again.
-- An agent discovered a useful fact during a task and can explain why it matters.
-- A search or source packet has been distilled into something reusable.
-- The user explicitly asks to remember, save, deposit, or add a finding to Webs.
+- A source-backed research conclusion has a canonical URL worth remembering.
+- A public repo, provider, or product source documents a non-obvious truth that
+  is likely to matter again.
+- An agent found a useful web source during a task and can explain why it matters.
+- The user explicitly asks to remember or save one or more source URLs in Webs.
 
 ## Do not save
 
@@ -28,7 +28,10 @@ Connect to the Webs MCP server at `https://webs.creative-int.com/mcp`.
 - Unverified guesses or speculation.
 - Noisy transient logs that will not help future recall.
 - Material the user asked not to persist.
-- Full private documents when a citation, summary, or safer excerpt is enough.
+- Private or inaccessible URLs unless the user authorized the save and Webs can
+  access the source.
+- Bare findings or prose without a source URL. Explain that the current public
+  `save` tool is URL-only instead of inventing another input shape.
 
 ## Required deposit shape
 
@@ -36,7 +39,7 @@ Agent saves carry intent:
 
 - `task`: what work produced this memory.
 - `why`: why this memory should matter later.
-- source or content: URL(s), selected content, or distilled text.
+- `urls`: one to eight source URLs.
 - optional idempotency key: use one when retrying the same save.
 
 The task and why are not decoration. They become part of the thread that lets
@@ -45,17 +48,20 @@ future context packets find the right memory.
 ## Workflow
 
 1. Confirm the material is durable and safe to persist.
-2. Keep the saved content narrow: the source, excerpt, or distilled conclusion.
+2. Choose the canonical source URL or the smallest relevant set of source URLs.
 3. Include task and why in plain language.
 4. Prefer idempotency when re-running automation.
 5. After save, preserve the returned memory id or citation if the user needs a
    receipt.
 
-## Example intent
+## Example call
 
-```text
-task: Compare memory product positioning for Webs v1
-why: This source explains why saved memory and fresh search need separate verbs
+```json
+{
+  "urls": ["https://example.com/source"],
+  "task": "Compare memory product positioning for Webs v1",
+  "why": "This source explains why saved memory and fresh search need separate verbs"
+}
 ```
 
 ## After saving

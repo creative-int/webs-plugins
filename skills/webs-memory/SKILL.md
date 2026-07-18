@@ -53,7 +53,7 @@ Does saved memory plausibly matter?
 +-- Yes, and the agent needs a small task packet -> call context.
 +-- Yes, and the user wants an answer from memory -> call ask.
 +-- Yes, and the agent needs exact retrieval -> call recall.
-+-- The work produced a durable finding -> call save with task and why.
++-- The work surfaced durable source URLs -> call save with task and why.
 ```
 
 ## Tool split
@@ -69,7 +69,7 @@ Does saved memory plausibly matter?
 | Auth and scope probe | `readiness` |
 
 Use fresh public-web search for drift-prone current facts. When fresh research
-produces a durable conclusion, save the distilled result back to Webs with a
+produces a durable conclusion, save its supporting source URL or URLs with a
 clear task and why.
 
 ## Output posture

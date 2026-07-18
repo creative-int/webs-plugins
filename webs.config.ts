@@ -6,6 +6,26 @@
  * `server.json`, and the README install block. Never hand-edit generated files.
  */
 
+export type WebsToolName =
+	| "save"
+	| "recall"
+	| "context"
+	| "ask"
+	| "watch"
+	| "run"
+	| "readiness";
+
+export type WebsOAuthScope =
+	| "read"
+	| "search"
+	| "fetch"
+	| "save"
+	| "recall"
+	| "context"
+	| "ask"
+	| "watch"
+	| "run";
+
 export interface WebsConfig {
 	/** Machine-facing id (plugin name, MCP server key). */
 	name: string;
@@ -28,9 +48,10 @@ export interface WebsConfig {
 		transport: "streamable-http";
 	};
 	registryName: string;
+	oauthScopes: WebsOAuthScope[];
 	tools: Array<{
-		name: "save" | "recall" | "context" | "ask" | "watch" | "run" | "readiness";
-		scope: string;
+		name: WebsToolName;
+		protectedBy: WebsOAuthScope[];
 		description: string;
 	}>;
 	readiness: {
@@ -51,7 +72,7 @@ export const webs: WebsConfig = {
 	shortDescription:
 		"Connect agents to Webs memory over remote MCP: save, recall, ask, watch, run, readiness, and on-demand context.",
 	longDescription:
-		"Webs is where the web becomes memory. The remote MCP server gives agents the same memory surface humans use: save durable web findings with task and why, recall saved memory with citations, ask questions over memory, create monitors, run durable research, check readiness, and request small task-affinity context packets. The context verb is strictly on demand; this plugin teaches judgment rather than automatic prompt injection.",
+		"Webs is where the web becomes memory. The remote MCP server gives agents the same memory surface humans use: save source URLs with task and why, recall saved memory with citations, ask questions over memory, create monitors, run durable research, check readiness, and request small task-affinity context packets. The context verb is strictly on demand; this plugin teaches judgment rather than automatic prompt injection.",
 	homepage: "https://webs.creative-int.com",
 	repository: "https://github.com/creative-int/webs-plugins",
 	license: "MIT",
@@ -73,46 +94,57 @@ export const webs: WebsConfig = {
 		transport: "streamable-http",
 	},
 	registryName: "io.github.creative-int/webs",
+	oauthScopes: [
+		"read",
+		"search",
+		"fetch",
+		"save",
+		"recall",
+		"context",
+		"ask",
+		"watch",
+		"run",
+	],
 	tools: [
 		{
 			name: "save",
-			scope: "webs.save",
+			protectedBy: ["save"],
 			description:
-				"Save URL(s) or content into analyzed Webs memory. Agent deposits carry task and why.",
+				"Save one to eight source URLs into analyzed Webs memory. Agent deposits require task and why.",
 		},
 		{
 			name: "recall",
-			scope: "webs.recall",
+			protectedBy: ["recall"],
 			description:
 				"Retrieve saved memory with hybrid semantic and lexical search, citations, excerpts, and scores.",
 		},
 		{
 			name: "context",
-			scope: "webs.context",
+			protectedBy: ["context", "recall"],
 			description:
 				"Return a small on-demand task-affinity context packet for an agent. Never automatic injection.",
 		},
 		{
 			name: "ask",
-			scope: "webs.ask",
+			protectedBy: ["ask"],
 			description:
 				"Answer questions over saved memory with citations and modes for saved-only, saved-memory, or fresh-then-saved.",
 		},
 		{
 			name: "watch",
-			scope: "webs.watch",
+			protectedBy: ["watch"],
 			description:
 				"Create or list monitors that keep standing topics feeding memory.",
 		},
 		{
 			name: "run",
-			scope: "webs.run",
+			protectedBy: ["run"],
 			description:
 				"Start durable research, compare, or monitor-snapshot runs and return a poll contract.",
 		},
 		{
 			name: "readiness",
-			scope: "webs.readiness",
+			protectedBy: ["read"],
 			description:
 				"Probe auth, entitlement, scope, and tool availability for the Webs MCP connection.",
 		},
@@ -130,7 +162,7 @@ export const webs: WebsConfig = {
 		{
 			name: "webs-save",
 			aliases: ["save-memory", "webs-save"],
-			description: "Save durable findings with task and why.",
+			description: "Save durable source URLs with task and why.",
 		},
 		{
 			name: "webs-recall-ask",
