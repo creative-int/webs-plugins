@@ -47,6 +47,10 @@ export interface WebsConfig {
 		url: string;
 		transport: "streamable-http";
 	};
+	pi: {
+		extensions: string[];
+		skills: string[];
+	};
 	registryName: string;
 	oauthScopes: WebsOAuthScope[];
 	tools: Array<{
@@ -92,6 +96,10 @@ export const webs: WebsConfig = {
 		id: "webs",
 		url: "https://webs.creative-int.com/mcp",
 		transport: "streamable-http",
+	},
+	pi: {
+		extensions: ["./extensions/index.ts"],
+		skills: ["./skills"],
 	},
 	registryName: "io.github.creative-int/webs",
 	oauthScopes: [

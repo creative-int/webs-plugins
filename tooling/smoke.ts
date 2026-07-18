@@ -6,6 +6,11 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import createWebsPiExtension, {
+	websToolContracts,
+	type WebsTransport,
+} from "../extensions/webs.ts";
 import { webs } from "../webs.config.ts";
 
 const HELP = process.argv.includes("--help") || process.argv.includes("-h");
@@ -32,6 +37,7 @@ const expectedOAuthScopes = [...webs.oauthScopes];
 try {
 	checkGeneratedManifestShape();
 	checkSkillFrontmatter();
+	checkPiContract();
 	checkPublicContractCopy();
 	console.log(
 		`Webs plugin smoke OK: ${expectedToolNames.length} tools, ${expectedOAuthScopes.length} OAuth scopes, ${expectedSkillNames.length} skills.`,
@@ -39,6 +45,67 @@ try {
 } catch (error) {
 	console.error(`Webs plugin smoke failed: ${(error as Error).message}`);
 	process.exit(1);
+}
+
+function checkPiContract() {
+	const packageJson = readJson<{
+		files?: string[];
+		pi?: { extensions?: string[]; skills?: string[] };
+	}>("package.json");
+	assert(
+		JSON.stringify(packageJson.pi?.extensions) ===
+			JSON.stringify(webs.pi.extensions),
+		"package.json Pi extension path mismatch",
+	);
+	assert(
+		JSON.stringify(packageJson.pi?.skills) === JSON.stringify(webs.pi.skills),
+		"package.json Pi skills path mismatch",
+	);
+	assert(
+		packageJson.files?.includes("extensions"),
+		"package.json does not publish extensions",
+	);
+
+	const registered: Array<{
+		description?: string;
+		name?: string;
+		parameters?: Record<string, unknown>;
+	}> = [];
+	let hooks = 0;
+	const transport: WebsTransport = {
+		async callTool() {
+			return {};
+		},
+	};
+	createWebsPiExtension(transport)({
+		on() {
+			hooks += 1;
+		},
+		registerTool(tool: unknown) {
+			registered.push(tool as (typeof registered)[number]);
+		},
+	} as unknown as ExtensionAPI);
+
+	const registeredNames = registered.map((tool) => tool.name).sort();
+	assert(
+		JSON.stringify(registeredNames) === JSON.stringify(expectedToolNames),
+		"Pi registered tool list mismatch",
+	);
+	assert(registered.length === 7, "Pi must register exactly seven tools");
+	assert(hooks === 0, "Pi companion must not register lifecycle hooks");
+	assert(
+		JSON.stringify(websToolContracts.map((tool) => tool.name).sort()) ===
+			JSON.stringify(expectedToolNames),
+		"Pi schema contract drifted from webs.config.ts",
+	);
+	const run = registered.find((tool) => tool.name === "run")?.parameters as
+		| { anyOf?: unknown; additionalProperties?: unknown }
+		| undefined;
+	assert(Array.isArray(run?.anyOf), "Pi run schema is missing poll/new-run anyOf");
+	assert(
+		run?.additionalProperties === false,
+		"Pi run schema must reject additional properties",
+	);
 }
 
 function checkGeneratedManifestShape() {
@@ -81,9 +148,23 @@ function checkGeneratedManifestShape() {
 			manifest.mcpServers === "./.mcp.json",
 			`${label} manifest MCP path mismatch`,
 		);
-		checkPluginMetadata(`${label} manifest`, manifestMetadata(manifest));
+		if (label !== "codex") {
+			checkPluginMetadata(`${label} manifest`, manifestMetadata(manifest));
+		}
 		assert(manifest.hooks === undefined, `${label} manifest must not add hooks`);
 	}
+	assert(
+		Array.isArray(codex.interface?.capabilities),
+		"codex manifest is missing interface capabilities",
+	);
+	assert(
+		Array.isArray(codex.interface?.defaultPrompt),
+		"codex manifest is missing default prompts",
+	);
+	assert(
+		codex.interface?.metadata === undefined,
+		"codex manifest must not include unsupported interface metadata",
+	);
 
 	const claudeMarketplace = readJson<MarketplaceManifest>(
 		".claude-plugin/marketplace.json",
@@ -162,6 +243,9 @@ function checkPublicContractCopy() {
 	const publicFiles = [
 		"webs.config.ts",
 		"README.md",
+		"extensions/schemas.ts",
+		"extensions/transport.ts",
+		"extensions/webs.ts",
 		...webs.skills.map((skill) => `skills/${skill.name}/SKILL.md`),
 		".claude-plugin/plugin.json",
 		".codex-plugin/plugin.json",
@@ -190,6 +274,16 @@ function checkPublicContractCopy() {
 		readme.includes('{"urls":["https://example.com"],"task":"...","why":"..."}'),
 		"README is missing the URL-only save round trip",
 	);
+	assert(
+		readme.includes(
+			"pi install git:github.com/creative-int/webs-plugins",
+		),
+		"README is missing the generated Pi install command",
+	);
+	assert(
+		readme.includes("webs login --profile prod"),
+		"README is missing Pi OAuth guidance",
+	);
 }
 
 function readJson<T>(rel: string): T {
@@ -212,7 +306,11 @@ interface PluginManifest {
 	mcpServers?: string;
 	hooks?: unknown;
 	metadata?: unknown;
-	interface?: { metadata?: unknown };
+	interface?: {
+		capabilities?: unknown;
+		defaultPrompt?: unknown;
+		metadata?: unknown;
+	};
 }
 
 interface MarketplaceManifest {

@@ -59,6 +59,16 @@ export const installClients = [
 		steps: [`npx skills add ${slug()}`],
 	},
 	{
+		id: "pi",
+		label: "Pi",
+		blurb:
+			"Install the native seven-tool extension and the four Webs judgment skills. Authenticate with the Webs CLI, then ask Pi to invoke `readiness`; the extension reuses the selected CLI profile without printing its token.",
+		steps: [
+			`pi install git:github.com/${slug()}`,
+			"webs login --profile prod",
+		],
+	},
+	{
 		id: "claude-code",
 		label: "Claude Code",
 		blurb:
@@ -175,8 +185,14 @@ const files: Record<string, string> = {
 			longDescription: webs.longDescription,
 			developerName: webs.owner.name,
 			category: webs.category,
+			capabilities: ["Remote MCP", "Memory", "Research"],
+			websiteURL: webs.homepage,
+			defaultPrompt: [
+				"Check whether my Webs memory connection is ready.",
+				"Recall what we have saved about this task.",
+				"Ask Webs memory a cited question.",
+			],
 			logo: webs.logo,
-			metadata: pluginMetadata(),
 		},
 	}),
 
@@ -230,10 +246,11 @@ function readmeInstallBlock() {
 
 Every install path converges on the same remote MCP server and Webs-owned OAuth flow:
 
-1. If you installed only with \`npx skills\`, also add the generic MCP configuration above. Skills teach judgment; MCP provides the seven live tools.
-2. Invoke \`readiness\`. Complete OAuth in the client-owned browser or credential flow when prompted. The intended connection requests \`${webs.oauthScopes.join(" ")}\`; never copy a bearer into this repository.
-3. Invoke \`readiness\` again. Treat the connection as ready only when Webs confirms auth, entitlement, granted scopes, and tool availability.
-4. Exercise memory deliberately: call \`context\` with \`{"task":"...","why":"..."}\` only when prior memory may help; call \`recall\` with \`{"query":"..."}\`; then save a real source URL with \`{"urls":["https://example.com"],"task":"...","why":"..."}\`.
+1. If you installed only with \`npx skills\`, also add the generic MCP configuration above. Skills teach judgment; MCP or the native Pi extension provides the seven live tools.
+2. Pi reads the selected Webs CLI profile from \`~/.config/webs/config.json\` (or \`WEBS_CONFIG\`). Run \`webs login --profile <name>\`, select it with \`WEBS_PROFILE\` when needed, and never paste or print its bearer token. Environment-only setups may use \`WEBS_MCP_TOKEN\` and \`WEBS_MCP_URL\`.
+3. Invoke \`readiness\`. For generic MCP clients, complete OAuth in the client-owned browser or credential flow when prompted. The intended connection requests \`${webs.oauthScopes.join(" ")}\`.
+4. Invoke \`readiness\` again after authentication. Treat the connection as ready only when Webs confirms auth, entitlement, granted scopes, and tool availability.
+5. Exercise memory deliberately: call \`context\` with \`{"task":"...","why":"..."}\` only when prior memory may help; call \`recall\` with \`{"query":"..."}\`; then save a real source URL with \`{"urls":["https://example.com"],"task":"...","why":"..."}\`.
 
 Use \`ask\` when you need a cited answer rather than retrieval results. Replace the example URL before saving.`);
 	return lines.join("\n\n");
