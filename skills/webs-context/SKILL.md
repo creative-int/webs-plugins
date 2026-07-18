@@ -54,7 +54,8 @@ Good task and why fields are short but specific. Avoid generic fields such as
 1. Read citations and excerpts before relying on a result.
 2. Carry uncertainty forward when scores or provenance are weak.
 3. If the packet is stale or missing, say so and use fresh evidence.
-4. If fresh work produces a durable conclusion, save it with task and why.
+4. If fresh work produces a durable conclusion, save its supporting source URL
+   or URLs with task and why.
 
 ## Example
 

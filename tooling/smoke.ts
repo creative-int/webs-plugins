@@ -22,13 +22,19 @@ No bearer token is required.
 const ROOT = join(import.meta.dirname, "..");
 const expectedSkillNames = webs.skills.map((skill) => skill.name).sort();
 const expectedToolNames = webs.tools.map((tool) => tool.name).sort();
-const expectedScopes = webs.tools.map((tool) => tool.scope).sort();
+const expectedToolMetadata = webs.tools.map((tool) => ({
+	name: tool.name,
+	protectedBy: tool.protectedBy,
+	description: tool.description,
+}));
+const expectedOAuthScopes = [...webs.oauthScopes];
 
 try {
 	checkGeneratedManifestShape();
 	checkSkillFrontmatter();
+	checkPublicContractCopy();
 	console.log(
-		`Webs plugin smoke OK: ${expectedToolNames.length} tools, ${expectedSkillNames.length} skills.`,
+		`Webs plugin smoke OK: ${expectedToolNames.length} tools, ${expectedOAuthScopes.length} OAuth scopes, ${expectedSkillNames.length} skills.`,
 	);
 } catch (error) {
 	console.error(`Webs plugin smoke failed: ${(error as Error).message}`);
@@ -75,23 +81,57 @@ function checkGeneratedManifestShape() {
 			manifest.mcpServers === "./.mcp.json",
 			`${label} manifest MCP path mismatch`,
 		);
-		const metadata = manifestMetadata(manifest);
-		const toolNames = (metadata.tools ?? []).map((tool) => tool.name).sort();
-		const scopes = [...(metadata.scopes ?? [])].sort();
-		assert(
-			JSON.stringify(toolNames) === JSON.stringify(expectedToolNames),
-			`${label} manifest tool list mismatch`,
-		);
-		assert(
-			JSON.stringify(scopes) === JSON.stringify(expectedScopes),
-			`${label} manifest scope list mismatch`,
-		);
-		assert(
-			metadata.repoProfile === "agent-plugin-companion",
-			`${label} manifest missing repo profile metadata`,
-		);
-		assert(metadata.companionOf === "webs", `${label} manifest companion mismatch`);
+		checkPluginMetadata(`${label} manifest`, manifestMetadata(manifest));
+		assert(manifest.hooks === undefined, `${label} manifest must not add hooks`);
 	}
+
+	const claudeMarketplace = readJson<MarketplaceManifest>(
+		".claude-plugin/marketplace.json",
+	);
+	const cursorMarketplace = readJson<MarketplaceManifest>(
+		".cursor-plugin/marketplace.json",
+	);
+	checkPluginMetadata(
+		"claude marketplace",
+		(claudeMarketplace.plugins?.[0]?.metadata ?? {}) as PluginMetadata,
+	);
+	checkPluginMetadata(
+		"cursor marketplace",
+		(cursorMarketplace.metadata ?? {}) as PluginMetadata,
+	);
+
+	assert(expectedToolNames.length === 7, "Webs must expose exactly seven tools");
+	assert(expectedOAuthScopes.length === 9, "Webs must publish exactly nine OAuth scopes");
+	assert(
+		!expectedOAuthScopes.some((scope) => scope === ("readiness" as string)),
+		"readiness is a tool, not an OAuth scope",
+	);
+	const readiness = webs.tools.find((tool) => tool.name === "readiness");
+	assert(
+		JSON.stringify(readiness?.protectedBy) === JSON.stringify(["read"]),
+		"readiness must be protected by the read scope",
+	);
+}
+
+function checkPluginMetadata(label: string, metadata: PluginMetadata) {
+	const toolNames = (metadata.tools ?? []).map((tool) => tool.name).sort();
+	assert(
+		JSON.stringify(toolNames) === JSON.stringify(expectedToolNames),
+		`${label} tool list mismatch`,
+	);
+	assert(
+		JSON.stringify(metadata.tools) === JSON.stringify(expectedToolMetadata),
+		`${label} tool protection metadata mismatch`,
+	);
+	assert(
+		JSON.stringify(metadata.oauthScopes) === JSON.stringify(expectedOAuthScopes),
+		`${label} OAuth scope list mismatch`,
+	);
+	assert(
+		metadata.repoProfile === "agent-plugin-companion",
+		`${label} missing repo profile metadata`,
+	);
+	assert(metadata.companionOf === "webs", `${label} companion mismatch`);
 }
 
 function checkSkillFrontmatter() {
@@ -118,6 +158,40 @@ function checkSkillFrontmatter() {
 	}
 }
 
+function checkPublicContractCopy() {
+	const publicFiles = [
+		"webs.config.ts",
+		"README.md",
+		...webs.skills.map((skill) => `skills/${skill.name}/SKILL.md`),
+		".claude-plugin/plugin.json",
+		".codex-plugin/plugin.json",
+		".cursor-plugin/plugin.json",
+	];
+	const forbidden: Array<[RegExp, string]> = [
+		[/\bwebs\.(?:read|search|fetch|save|recall|context|ask|watch|run|readiness)\b/i, "synthetic webs.* OAuth scope"],
+		[/\bURL\(s\) or content\b/i, "URL-or-content save claim"],
+		[/\bselected[- ]content\b/i, "selected-content save claim"],
+		[/\bdistilled[- ]text\b/i, "distilled-text save claim"],
+	];
+
+	for (const rel of publicFiles) {
+		const text = readFileSync(join(ROOT, rel), "utf8");
+		for (const [pattern, label] of forbidden) {
+			assert(!pattern.test(text), `${rel} contains unsupported ${label}`);
+		}
+	}
+
+	const readme = readFileSync(join(ROOT, "README.md"), "utf8");
+	assert(
+		readme.includes("### Quickstart: authenticate and verify"),
+		"README is missing the generated auth/readiness quickstart",
+	);
+	assert(
+		readme.includes('{"urls":["https://example.com"],"task":"...","why":"..."}'),
+		"README is missing the URL-only save round trip",
+	);
+}
+
 function readJson<T>(rel: string): T {
 	const path = join(ROOT, rel);
 	assert(existsSync(path), `${rel} is missing`);
@@ -136,13 +210,23 @@ interface PluginManifest {
 	name?: string;
 	skills?: string;
 	mcpServers?: string;
+	hooks?: unknown;
 	metadata?: unknown;
 	interface?: { metadata?: unknown };
+}
+
+interface MarketplaceManifest {
+	metadata?: unknown;
+	plugins?: Array<{ metadata?: unknown }>;
 }
 
 interface PluginMetadata {
 	repoProfile?: string;
 	companionOf?: string;
-	scopes?: string[];
-	tools?: Array<{ name: string; scope: string; description: string }>;
+	oauthScopes?: string[];
+	tools?: Array<{
+		name: string;
+		protectedBy: string[];
+		description: string;
+	}>;
 }

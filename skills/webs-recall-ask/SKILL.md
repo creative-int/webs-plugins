@@ -62,7 +62,7 @@ When using Webs:
 1. Cite the saved memory or explain that it was missing.
 2. Separate saved-memory evidence from fresh evidence.
 3. Name uncertainty rather than smoothing it away.
-4. Save durable new findings if they should be remembered later.
+4. Save the supporting source URL or URLs when new evidence should be remembered.
 
 ## Common mistake
 
