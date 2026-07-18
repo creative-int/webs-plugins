@@ -66,10 +66,11 @@ Add the marketplace and install the Webs plugin. Invoke `readiness` and complete
 
 ### Codex
 
-Add this repository as a Codex plugin marketplace, install Webs from `/plugins`, then invoke `readiness` and complete OAuth.
+Add this repository as a Codex plugin marketplace, install Webs with `codex plugin add`, then invoke `readiness` and complete OAuth.
 
 ```sh
 codex plugin marketplace add creative-int/webs-plugins
+codex plugin add webs@webs
 ```
 
 ### Cursor

@@ -5,8 +5,9 @@
  *   pnpm generate --check  # fail if generated files are stale
  *   pnpm generate --help   # print usage
  *
- * Generated files (never hand-edit): .mcp.json, .claude-plugin/*,
- * .codex-plugin/*, .cursor-plugin/*, server.json, and the README install block.
+ * Generated files (never hand-edit): .mcp.json, .agents/plugins/marketplace.json,
+ * .claude-plugin/*, .codex-plugin/*, .cursor-plugin/*, server.json, and the
+ * README install block.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -82,8 +83,11 @@ export const installClients = [
 		id: "codex",
 		label: "Codex",
 		blurb:
-			"Add this repository as a Codex plugin marketplace, install Webs from `/plugins`, then invoke `readiness` and complete OAuth.",
-		steps: [`codex plugin marketplace add ${slug()}`],
+			"Add this repository as a Codex plugin marketplace, install Webs with `codex plugin add`, then invoke `readiness` and complete OAuth.",
+		steps: [
+			`codex plugin marketplace add ${slug()}`,
+			`codex plugin add ${webs.name}@${webs.name}`,
+		],
 	},
 	{
 		id: "cursor",
@@ -129,6 +133,41 @@ function pluginMetadata() {
 		},
 	};
 }
+
+type CodexMarketplace = {
+	name: "webs";
+	interface: { displayName: "Webs" };
+	plugins: Array<{
+		name: "webs";
+		source: {
+			source: "url";
+			url: "https://github.com/creative-int/webs-plugins.git";
+			ref: "main";
+		};
+		policy: {
+			installation: "AVAILABLE";
+			authentication: "ON_INSTALL";
+		};
+		category: "Productivity";
+	}>;
+};
+
+const codexMarketplace = {
+	name: webs.name,
+	interface: { displayName: webs.displayName },
+	plugins: [
+		{
+			name: webs.name,
+			source: {
+				source: webs.codex.marketplace.source,
+				url: `${webs.repository}.git` as const,
+				ref: webs.codex.marketplace.ref,
+			},
+			policy: webs.codex.marketplace.policy,
+			category: webs.category,
+		},
+	],
+} satisfies CodexMarketplace;
 
 const files: Record<string, string> = {
 	".mcp.json": json({
@@ -195,6 +234,7 @@ const files: Record<string, string> = {
 			logo: webs.logo,
 		},
 	}),
+	".agents/plugins/marketplace.json": json(codexMarketplace),
 
 	".cursor-plugin/plugin.json": json({
 		name: webs.name,

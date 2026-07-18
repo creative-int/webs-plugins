@@ -136,6 +136,9 @@ function checkGeneratedManifestShape() {
 	const codex = readJson<PluginManifest>(".codex-plugin/plugin.json");
 	const claude = readJson<PluginManifest>(".claude-plugin/plugin.json");
 	const cursor = readJson<PluginManifest>(".cursor-plugin/plugin.json");
+	const codexMarketplace = readJson<CodexMarketplace>(
+		".agents/plugins/marketplace.json",
+	);
 
 	for (const [label, manifest] of [
 		["codex", codex],
@@ -164,6 +167,38 @@ function checkGeneratedManifestShape() {
 	assert(
 		codex.interface?.metadata === undefined,
 		"codex manifest must not include unsupported interface metadata",
+	);
+	assert(codexMarketplace.name === webs.name, "codex marketplace name mismatch");
+	assert(
+		codexMarketplace.interface?.displayName === webs.displayName,
+		"codex marketplace display name mismatch",
+	);
+	assert(
+		codexMarketplace.plugins?.length === 1,
+		"codex marketplace must contain exactly one plugin",
+	);
+	const codexMarketplacePlugin = codexMarketplace.plugins[0];
+	assert(
+		codexMarketplacePlugin?.name === webs.name,
+		"codex marketplace plugin name mismatch",
+	);
+	assert(
+		JSON.stringify(codexMarketplacePlugin.source) ===
+			JSON.stringify({
+				source: webs.codex.marketplace.source,
+				url: `${webs.repository}.git`,
+				ref: webs.codex.marketplace.ref,
+			}),
+		"codex marketplace source mismatch",
+	);
+	assert(
+		JSON.stringify(codexMarketplacePlugin.policy) ===
+			JSON.stringify(webs.codex.marketplace.policy),
+		"codex marketplace policy mismatch",
+	);
+	assert(
+		codexMarketplacePlugin.category === webs.category,
+		"codex marketplace category mismatch",
 	);
 
 	const claudeMarketplace = readJson<MarketplaceManifest>(
@@ -248,6 +283,7 @@ function checkPublicContractCopy() {
 		"extensions/webs.ts",
 		...webs.skills.map((skill) => `skills/${skill.name}/SKILL.md`),
 		".claude-plugin/plugin.json",
+		".agents/plugins/marketplace.json",
 		".codex-plugin/plugin.json",
 		".cursor-plugin/plugin.json",
 	];
@@ -284,6 +320,16 @@ function checkPublicContractCopy() {
 		readme.includes("webs login --profile prod"),
 		"README is missing Pi OAuth guidance",
 	);
+	assert(
+		readme.includes(
+			"codex plugin marketplace add creative-int/webs-plugins",
+		),
+		"README is missing the Codex marketplace add command",
+	);
+	assert(
+		readme.includes("codex plugin add webs@webs"),
+		"README is missing the Codex plugin add command",
+	);
 }
 
 function readJson<T>(rel: string): T {
@@ -316,6 +362,24 @@ interface PluginManifest {
 interface MarketplaceManifest {
 	metadata?: unknown;
 	plugins?: Array<{ metadata?: unknown }>;
+}
+
+interface CodexMarketplace {
+	name?: string;
+	interface?: { displayName?: string };
+	plugins: Array<{
+		name?: string;
+		source?: {
+			source?: string;
+			url?: string;
+			ref?: string;
+		};
+		policy?: {
+			installation?: string;
+			authentication?: string;
+		};
+		category?: string;
+	}>;
 }
 
 interface PluginMetadata {

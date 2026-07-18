@@ -28,18 +28,18 @@ export type WebsOAuthScope =
 
 export interface WebsConfig {
 	/** Machine-facing id (plugin name, MCP server key). */
-	name: string;
+	name: "webs";
 	/** Human-facing name. */
-	displayName: string;
+	displayName: "Webs";
 	version: string;
 	tagline: string;
 	shortDescription: string;
 	longDescription: string;
 	homepage: string;
-	repository: string;
+	repository: "https://github.com/creative-int/webs-plugins";
 	license: string;
 	owner: { name: string; email: string };
-	category: string;
+	category: "Productivity";
 	keywords: string[];
 	logo: string;
 	mcp: {
@@ -50,6 +50,16 @@ export interface WebsConfig {
 	pi: {
 		extensions: string[];
 		skills: string[];
+	};
+	codex: {
+		marketplace: {
+			source: "url";
+			ref: "main";
+			policy: {
+				installation: "AVAILABLE";
+				authentication: "ON_INSTALL";
+			};
+		};
 	};
 	registryName: string;
 	oauthScopes: WebsOAuthScope[];
@@ -68,7 +78,7 @@ export interface WebsConfig {
 	}>;
 }
 
-export const webs: WebsConfig = {
+export const webs = {
 	name: "webs",
 	displayName: "Webs",
 	version: "0.1.0",
@@ -100,6 +110,16 @@ export const webs: WebsConfig = {
 	pi: {
 		extensions: ["./extensions/index.ts"],
 		skills: ["./skills"],
+	},
+	codex: {
+		marketplace: {
+			source: "url",
+			ref: "main",
+			policy: {
+				installation: "AVAILABLE",
+				authentication: "ON_INSTALL",
+			},
+		},
 	},
 	registryName: "io.github.creative-int/webs",
 	oauthScopes: [
@@ -183,6 +203,6 @@ export const webs: WebsConfig = {
 			description: "Request small on-demand context packets without hooks.",
 		},
 	],
-};
+} satisfies WebsConfig;
 
 export default webs;
