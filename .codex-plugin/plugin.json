@@ -26,115 +26,17 @@
 		"longDescription": "Webs is where the web becomes memory. The remote MCP server gives agents the same memory surface humans use: save source URLs with task and why, recall saved memory with citations, ask questions over memory, create monitors, run durable research, check readiness, and request small task-affinity context packets. The context verb is strictly on demand; this plugin teaches judgment rather than automatic prompt injection.",
 		"developerName": "creative-int",
 		"category": "Productivity",
-		"logo": "./assets/logo.png",
-		"metadata": {
-			"repoProfile": "agent-plugin-companion",
-			"companionOf": "webs",
-			"tools": [
-				{
-					"name": "save",
-					"protectedBy": [
-						"save"
-					],
-					"description": "Save one to eight source URLs into analyzed Webs memory. Agent deposits require task and why."
-				},
-				{
-					"name": "recall",
-					"protectedBy": [
-						"recall"
-					],
-					"description": "Retrieve saved memory with hybrid semantic and lexical search, citations, excerpts, and scores."
-				},
-				{
-					"name": "context",
-					"protectedBy": [
-						"context",
-						"recall"
-					],
-					"description": "Return a small on-demand task-affinity context packet for an agent. Never automatic injection."
-				},
-				{
-					"name": "ask",
-					"protectedBy": [
-						"ask"
-					],
-					"description": "Answer questions over saved memory with citations and modes for saved-only, saved-memory, or fresh-then-saved."
-				},
-				{
-					"name": "watch",
-					"protectedBy": [
-						"watch"
-					],
-					"description": "Create or list monitors that keep standing topics feeding memory."
-				},
-				{
-					"name": "run",
-					"protectedBy": [
-						"run"
-					],
-					"description": "Start durable research, compare, or monitor-snapshot runs and return a poll contract."
-				},
-				{
-					"name": "readiness",
-					"protectedBy": [
-						"read"
-					],
-					"description": "Probe auth, entitlement, scope, and tool availability for the Webs MCP connection."
-				}
-			],
-			"oauthScopes": [
-				"read",
-				"search",
-				"fetch",
-				"save",
-				"recall",
-				"context",
-				"ask",
-				"watch",
-				"run"
-			],
-			"skills": [
-				{
-					"name": "webs-memory",
-					"aliases": [
-						"webs",
-						"memory",
-						"have-we-seen"
-					],
-					"description": "Judgment rule for deciding when to use Webs memory."
-				},
-				{
-					"name": "webs-save",
-					"aliases": [
-						"save-memory",
-						"webs-save"
-					],
-					"description": "Save durable source URLs with task and why."
-				},
-				{
-					"name": "webs-recall-ask",
-					"aliases": [
-						"webs-recall",
-						"webs-ask",
-						"ask-memory"
-					],
-					"description": "Choose recall versus ask versus fresh search."
-				},
-				{
-					"name": "webs-context",
-					"aliases": [
-						"agent-context",
-						"context-packet"
-					],
-					"description": "Request small on-demand context packets without hooks."
-				}
-			],
-			"readiness": "Remote MCP endpoint configured at https://webs.creative-int.com/mcp. Auth is client-owned; bearer tokens stay in client credential stores or environment variables, never in this repository.",
-			"mcp": {
-				"id": "webs",
-				"url": "https://webs.creative-int.com/mcp",
-				"transport": "streamable-http"
-			}
-		}
+		"capabilities": [
+			"Remote MCP",
+			"Memory",
+			"Research"
+		],
+		"websiteURL": "https://webs.creative-int.com",
+		"defaultPrompt": [
+			"Check whether my Webs memory connection is ready.",
+			"Recall what we have saved about this task.",
+			"Ask Webs memory a cited question."
+		],
+		"logo": "./assets/logo.png"
 	}
 }
