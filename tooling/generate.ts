@@ -45,6 +45,7 @@ export const installClients = [
 			json({
 				mcpServers: {
 					[webs.mcp.id]: {
+						type: webs.mcp.type,
 						url: webs.mcp.url,
 						transport: webs.mcp.transport,
 					},
@@ -173,6 +174,7 @@ const files: Record<string, string> = {
 	".mcp.json": json({
 		mcpServers: {
 			[webs.mcp.id]: {
+				type: webs.mcp.type,
 				url: webs.mcp.url,
 				transport: webs.mcp.transport,
 			},
