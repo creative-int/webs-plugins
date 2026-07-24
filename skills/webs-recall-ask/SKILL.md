@@ -37,6 +37,11 @@ Use `recall` when you need retrieval results rather than an answer:
 Carry scores and provenance honestly. A low score is a weak match, not proof that
 the topic is absent.
 
+`recall` accepts `query`, exact `webId`, `spaceId` or `space`, bounded `limit`,
+`includeMarkdown` for exact-web retrieval, optional ISO `since`, and optional
+feedback. Query and web ID are optional individually; provide the narrowest
+input that matches the task.
+
 ## Ask modes
 
 - `saved_only`: answer only from saved Webs memory. If memory is missing, say so.
@@ -47,6 +52,11 @@ the topic is absent.
 
 Use `fresh_then_saved` when current facts may have changed but prior Webs memory
 is still relevant background.
+
+`ask` requires `question` and `mode`. Its optional `scope` accepts `spaceId`,
+`space`, `webIds`, or `watchIds`; optional `task`, `why`, `citationStyle`
+(`inline`, `footnote`, or `json`), and feedback preserve intent and output
+shape.
 
 ## Fresh-search boundary
 

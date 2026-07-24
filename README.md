@@ -39,6 +39,23 @@ Add Webs as a remote Streamable HTTP server, then invoke `readiness` to begin cl
 }
 ```
 
+### Codex (direct MCP)
+
+Add Webs as a Streamable HTTP server in `~/.codex/config.toml` (or a trusted project's `.codex/config.toml`), then run `codex mcp login webs` for OAuth.
+
+```toml
+[mcp_servers.webs]
+url = "https://webs.creative-int.com/mcp"
+```
+
+### Claude Code (direct MCP)
+
+Add Webs as a native HTTP MCP server, then complete OAuth when Claude prompts.
+
+```sh
+claude mcp add --transport http webs https://webs.creative-int.com/mcp
+```
+
 ### Any agent (npx skills)
 
 Install the four Webs judgment skills. This does not connect MCP by itself; also use the generic MCP configuration above unless your agent already has the Webs plugin.
@@ -56,7 +73,7 @@ pi install git:github.com/creative-int/webs-plugins
 webs login --profile prod
 ```
 
-### Claude Code
+### Claude Code (plugin)
 
 Add the marketplace and install the Webs plugin. Invoke `readiness` and complete the Webs-owned OAuth flow when Claude prompts.
 
@@ -65,7 +82,7 @@ Add the marketplace and install the Webs plugin. Invoke `readiness` and complete
 /plugin install webs@webs
 ```
 
-### Codex
+### Codex (plugin)
 
 Add this repository as a Codex plugin marketplace, install Webs with `codex plugin add`, then invoke `readiness` and complete OAuth.
 

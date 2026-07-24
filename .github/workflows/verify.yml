@@ -2,18 +2,19 @@ name: verify
 
 on:
   push:
-    paths-ignore:
-      - "docs/**"
-      - "*.md"
     branches: [main]
   pull_request:
-    paths-ignore:
-      - "docs/**"
-      - "*.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN || github.token }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -28,7 +29,66 @@ jobs:
         run: pnpm run typecheck
       - name: Build
         run: pnpm run build
+      - name: Tests
+        run: pnpm run test
+      - name: Deterministic ProofRun battery (no Webs token)
+        env:
+          WEBS_CONFIG: /tmp/webs-plugins-no-profile.json
+          WEBS_MCP_TOKEN: ""
+          WEBS_API_TOKEN: ""
+          WEBS_TOKEN: ""
+        run: pnpm run battery -- --out .artifacts/evals/deterministic.proof.json
       - name: Help
         run: pnpm run help
       - name: Smoke
         run: pnpm run smoke
+      - name: Upload deterministic ProofRun
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webs-mcp-deterministic-proof
+          path: .artifacts/evals/deterministic.proof.json
+          if-no-files-found: error
+
+  requires-token:
+    name: requires-token
+    needs: verify
+    runs-on: ubuntu-latest
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN || github.token }}
+      WEBS_MCP_TOKEN: ${{ secrets.WEBS_MCP_TOKEN }}
+    steps:
+      - name: Check live-token availability
+        id: token
+        shell: bash
+        run: |
+          if [ -z "${WEBS_MCP_TOKEN:-}" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=requires-token battery skipped::WEBS_MCP_TOKEN is not configured; no live proof claim was made."
+            echo "### requires-token battery" >> "$GITHUB_STEP_SUMMARY"
+            echo "Skipped: WEBS_MCP_TOKEN is not configured. Deterministic proof is reported separately; no live MCP claim was made." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.token.outputs.available == 'true'
+        uses: actions/checkout@v4
+      - if: steps.token.outputs.available == 'true'
+        uses: pnpm/action-setup@v4
+      - if: steps.token.outputs.available == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        if: steps.token.outputs.available == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Live MCP ProofRun battery
+        if: steps.token.outputs.available == 'true'
+        run: pnpm run battery:requires-token -- --out .artifacts/evals/requires-token.proof.json
+      - name: Upload live ProofRun
+        if: steps.token.outputs.available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: webs-mcp-requires-token-proof
+          path: .artifacts/evals/requires-token.proof.json
+          if-no-files-found: error

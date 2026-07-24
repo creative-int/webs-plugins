@@ -42,9 +42,9 @@ calls. Context windows are sacred.
 Provide:
 
 - `task`: the concrete work being done.
-- `why`: why saved memory could help this task.
-- optional text: the prompt, issue, source title, or other task clues.
-- optional scope filters when the client exposes them.
+- optional `why`: why saved memory could help this task.
+- optional `text`: the prompt, issue, source title, or other task clues.
+- optional `scope`: `spaceId`, `space`, or `webIds`.
 
 Good task and why fields are short but specific. Avoid generic fields such as
 `task: research` or `why: context`.
@@ -59,10 +59,12 @@ Good task and why fields are short but specific. Avoid generic fields such as
 
 ## Example
 
-```text
-task: Prepare a Webs v1 lane closeout
-why: Prior Webs V1 rulings may define the context verb and no-auto-injection law
-text: context verb agent memory recall saved packets
+```json
+{
+  "task": "Prepare a Webs v1 lane closeout",
+  "why": "Prior Webs V1 rulings may define the context verb and no-auto-injection law",
+  "text": "context verb agent memory recall saved packets"
+}
 ```
 
 ## Failure handling

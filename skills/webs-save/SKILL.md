@@ -40,7 +40,9 @@ Agent saves carry intent:
 - `task`: what work produced this memory.
 - `why`: why this memory should matter later.
 - `urls`: one to eight source URLs.
-- optional idempotency key: use one when retrying the same save.
+- optional `idempotencyKey`: use one when retrying the same save.
+- optional `prompt`, `spaceId` or `space`, `tags`, and `note`.
+- optional `via`: `mcp` or `extension`; MCP callers normally use `mcp`.
 
 The task and why are not decoration. They become part of the thread that lets
 future context packets find the right memory.
@@ -60,7 +62,9 @@ future context packets find the right memory.
 {
   "urls": ["https://example.com/source"],
   "task": "Compare memory product positioning for Webs v1",
-  "why": "This source explains why saved memory and fresh search need separate verbs"
+  "why": "This source explains why saved memory and fresh search need separate verbs",
+  "idempotencyKey": "memory-positioning-v1",
+  "via": "mcp"
 }
 ```
 

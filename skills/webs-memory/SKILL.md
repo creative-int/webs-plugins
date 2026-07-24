@@ -68,6 +68,9 @@ Does saved memory plausibly matter?
 | Durable research or compare run | `run` |
 | Auth and scope probe | `readiness` |
 
+The live surface is exactly these seven tools. `readiness` is protected by the
+`read` OAuth scope; it is not itself an OAuth scope.
+
 Use fresh public-web search for drift-prone current facts. When fresh research
 produces a durable conclusion, save its supporting source URL or URLs with a
 clear task and why.
