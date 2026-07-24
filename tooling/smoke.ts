@@ -285,9 +285,15 @@ function checkPublicContractCopy() {
 	const publicFiles = [
 		"webs.config.ts",
 		"README.md",
+		".npmrc",
+		".github/workflows/verify.yml",
 		"extensions/schemas.ts",
 		"extensions/transport.ts",
 		"extensions/webs.ts",
+		"tooling/battery.ts",
+		"tooling/run-battery.ts",
+		"test/battery.test.ts",
+		"test/webs.test.ts",
 		...webs.skills.map((skill) => `skills/${skill.name}/SKILL.md`),
 		".claude-plugin/plugin.json",
 		".agents/plugins/marketplace.json",
@@ -299,6 +305,11 @@ function checkPublicContractCopy() {
 		[/\bURL\(s\) or content\b/i, "URL-or-content save claim"],
 		[/\bselected[- ]content\b/i, "selected-content save claim"],
 		[/\bdistilled[- ]text\b/i, "distilled-text save claim"],
+		[/\/Users\/luke\//, "private user path"],
+		[/\/private\/tmp\/webs-pa\//, "private lane path"],
+		[/~\/\.agents(?:\/|\b)/, "private agent-runtime path"],
+		[/\bgh[opsu]_[A-Za-z0-9]{20,}\b/, "GitHub token"],
+		[/\bwebs_mcp_[A-Za-z0-9]{24,}\b/, "Webs MCP token"],
 	];
 
 	for (const rel of publicFiles) {
@@ -336,6 +347,18 @@ function checkPublicContractCopy() {
 	assert(
 		readme.includes("codex plugin add webs@webs"),
 		"README is missing the Codex plugin add command",
+	);
+	assert(
+		readme.includes(
+			'[mcp_servers.webs]\nurl = "https://webs.creative-int.com/mcp"',
+		),
+		"README is missing the Codex direct-MCP TOML block",
+	);
+	assert(
+		readme.includes(
+			"claude mcp add --transport http webs https://webs.creative-int.com/mcp",
+		),
+		"README is missing the Claude direct-MCP command",
 	);
 }
 

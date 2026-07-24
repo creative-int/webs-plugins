@@ -54,6 +54,26 @@ export const installClients = [
 		],
 	},
 	{
+		id: "codex-mcp",
+		label: "Codex (direct MCP)",
+		blurb:
+			"Add Webs as a Streamable HTTP server in `~/.codex/config.toml` (or a trusted project's `.codex/config.toml`), then run `codex mcp login webs` for OAuth.",
+		language: "toml",
+		steps: [
+			`[mcp_servers.${webs.mcp.id}]`,
+			`url = "${webs.mcp.url}"`,
+		],
+	},
+	{
+		id: "claude-code-mcp",
+		label: "Claude Code (direct MCP)",
+		blurb:
+			"Add Webs as a native HTTP MCP server, then complete OAuth when Claude prompts.",
+		steps: [
+			`claude mcp add --transport http ${webs.mcp.id} ${webs.mcp.url}`,
+		],
+	},
+	{
 		id: "skills",
 		label: "Any agent (npx skills)",
 		blurb:
@@ -72,7 +92,7 @@ export const installClients = [
 	},
 	{
 		id: "claude-code",
-		label: "Claude Code",
+		label: "Claude Code (plugin)",
 		blurb:
 			"Add the marketplace and install the Webs plugin. Invoke `readiness` and complete the Webs-owned OAuth flow when Claude prompts.",
 		steps: [
@@ -82,7 +102,7 @@ export const installClients = [
 	},
 	{
 		id: "codex",
-		label: "Codex",
+		label: "Codex (plugin)",
 		blurb:
 			"Add this repository as a Codex plugin marketplace, install Webs with `codex plugin add`, then invoke `readiness` and complete OAuth.",
 		steps: [
@@ -278,10 +298,13 @@ const files: Record<string, string> = {
 
 function readmeInstallBlock() {
 	const lines = installClients.map((client) => {
-		const body =
-			client.id === "mcp"
-				? ["```json", client.steps[0], "```"].join("\n")
-				: ["```sh", ...client.steps, "```"].join("\n");
+		const language =
+			"language" in client
+				? client.language
+				: client.id === "mcp"
+					? "json"
+					: "sh";
+		const body = [`\`\`\`${language}`, ...client.steps, "```"].join("\n");
 		return `### ${client.label}\n\n${client.blurb}\n\n${body}`;
 	});
 	lines.push(`### Quickstart: authenticate and verify
