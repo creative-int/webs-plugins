@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "webs": {
+      "type": "http",
+      "url": "https://webs.creative-int.com/mcp"
+    }
+  }
+}

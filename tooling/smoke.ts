@@ -36,6 +36,7 @@ const expectedOAuthScopes = [...webs.oauthScopes];
 
 try {
 	checkGeneratedManifestShape();
+	checkClientCoverage();
 	checkSkillFrontmatter();
 	checkPiContract();
 	checkPublicContractCopy();
@@ -45,6 +46,38 @@ try {
 } catch (error) {
 	console.error(`Webs plugin smoke failed: ${(error as Error).message}`);
 	process.exit(1);
+}
+
+function checkClientCoverage() {
+	const expectedIds = [
+		"codex",
+		"claude",
+		"cursor",
+		"windsurf",
+		"vscode",
+		"generic",
+	];
+	assert(
+		JSON.stringify(webs.connectClients.map((client) => client.id)) ===
+			JSON.stringify(expectedIds),
+		"generated client snapshot must contain the canonical six clients",
+	);
+	for (const client of webs.connectClients) {
+		const filenames = {
+			codex: "config.toml",
+			claude: "add.sh",
+			cursor: "mcp.json",
+			windsurf: "mcp_config.json",
+			vscode: "mcp.json",
+			generic: "initialize.sh",
+		} as const;
+		const relative = `clients/${client.id}/${filenames[client.id]}`;
+		assert(existsSync(join(ROOT, relative)), `${relative} is missing`);
+		assert(
+			readFileSync(join(ROOT, relative), "utf8").trim() === client.value.trim(),
+			`${relative} drifted from the Webs connect snapshot`,
+		);
+	}
 }
 
 function checkPiContract() {
@@ -284,6 +317,7 @@ function checkSkillFrontmatter() {
 function checkPublicContractCopy() {
 	const publicFiles = [
 		"webs.config.ts",
+		"webs-connect.generated.ts",
 		"README.md",
 		".npmrc",
 		".github/workflows/verify.yml",
@@ -299,6 +333,17 @@ function checkPublicContractCopy() {
 		".agents/plugins/marketplace.json",
 		".codex-plugin/plugin.json",
 		".cursor-plugin/plugin.json",
+		...webs.connectClients.map((client) => {
+			const filenames = {
+				codex: "config.toml",
+				claude: "add.sh",
+				cursor: "mcp.json",
+				windsurf: "mcp_config.json",
+				vscode: "mcp.json",
+				generic: "initialize.sh",
+			} as const;
+			return `clients/${client.id}/${filenames[client.id]}`;
+		}),
 	];
 	const forbidden: Array<[RegExp, string]> = [
 		[/\bwebs\.(?:read|search|fetch|save|recall|context|ask|watch|run|readiness)\b/i, "synthetic webs.* OAuth scope"],
@@ -356,7 +401,7 @@ function checkPublicContractCopy() {
 	);
 	assert(
 		readme.includes(
-			"claude mcp add --transport http webs https://webs.creative-int.com/mcp",
+			"claude mcp add --scope user --transport http webs 'https://webs.creative-int.com/mcp'",
 		),
 		"README is missing the Claude direct-MCP command",
 	);

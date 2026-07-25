@@ -23,42 +23,83 @@
 
 <!-- AUTO-GENERATED:INSTALL START -->
 
-### Any MCP client (generic .mcp.json)
+### Codex
 
-Add Webs as a remote Streamable HTTP server, then invoke `readiness` to begin client-owned OAuth. Never paste a bearer into this repository.
-
-```json
-{
-	"mcpServers": {
-		"webs": {
-			"type": "http",
-			"url": "https://webs.creative-int.com/mcp",
-			"transport": "streamable-http"
-		}
-	}
-}
-```
-
-### Codex (direct MCP)
-
-Add Webs as a Streamable HTTP server in `~/.codex/config.toml` (or a trusted project's `.codex/config.toml`), then run `codex mcp login webs` for OAuth.
+Copy this Webs setup to `~/.codex/config.toml`. OAuth-capable clients authorize on first use; invoke `readiness` after connecting.
 
 ```toml
 [mcp_servers.webs]
 url = "https://webs.creative-int.com/mcp"
 ```
 
-### Claude Code (direct MCP)
+### Claude Code
 
-Add Webs as a native HTTP MCP server, then complete OAuth when Claude prompts.
+Copy this Webs setup to `one terminal command`. OAuth-capable clients authorize on first use; invoke `readiness` after connecting.
 
 ```sh
-claude mcp add --transport http webs https://webs.creative-int.com/mcp
+claude mcp add --scope user --transport http webs 'https://webs.creative-int.com/mcp'
+```
+
+### Cursor
+
+Copy this Webs setup to `.cursor/mcp.json`. OAuth-capable clients authorize on first use; invoke `readiness` after connecting.
+
+```json
+{
+  "mcpServers": {
+    "webs": {
+      "type": "http",
+      "url": "https://webs.creative-int.com/mcp"
+    }
+  }
+}
+```
+
+### Windsurf
+
+Copy this Webs setup to `~/.codeium/mcp_config.json`. OAuth-capable clients authorize on first use; invoke `readiness` after connecting.
+
+```json
+{
+  "mcpServers": {
+    "webs": {
+      "serverUrl": "https://webs.creative-int.com/mcp"
+    }
+  }
+}
+```
+
+### VS Code
+
+Copy this Webs setup to `.vscode/mcp.json`. OAuth-capable clients authorize on first use; invoke `readiness` after connecting.
+
+```json
+{
+  "servers": {
+    "webs": {
+      "type": "http",
+      "url": "https://webs.creative-int.com/mcp"
+    }
+  }
+}
+```
+
+### Any MCP client
+
+Copy this Webs setup to `Streamable HTTP initialize`. OAuth-capable clients authorize on first use; invoke `readiness` after connecting.
+
+```sh
+curl --fail-with-body --silent --show-error 'https://webs.creative-int.com/mcp' \
+  --request POST \
+  --header 'Accept: application/json, text/event-stream' \
+  --header 'Content-Type: application/json' \
+  --header "Authorization: Bearer $WEBS_API_TOKEN" \
+  --data '{"id":1,"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{},"clientInfo":{"name":"webs-generic-client","version":"1.0.0"},"protocolVersion":"2025-06-18"}}'
 ```
 
 ### Any agent (npx skills)
 
-Install the four Webs judgment skills. This does not connect MCP by itself; also use the generic MCP configuration above unless your agent already has the Webs plugin.
+Install the four Webs judgment skills. This does not connect MCP by itself; also use one of the client setup paths above unless your agent already has the Webs plugin.
 
 ```sh
 npx skills add creative-int/webs-plugins
@@ -91,7 +132,7 @@ codex plugin marketplace add creative-int/webs-plugins
 codex plugin add webs@webs
 ```
 
-### Cursor
+### Cursor (plugin)
 
 Install Webs from the Cursor plugin marketplace, then invoke `readiness` and complete OAuth when Cursor prompts.
 
@@ -103,9 +144,9 @@ Cursor → Settings → Plugins → Add marketplace → creative-int/webs-plugin
 
 Every install path converges on the same remote MCP server and Webs-owned OAuth flow:
 
-1. If you installed only with `npx skills`, also add the generic MCP configuration above. Skills teach judgment; MCP or the native Pi extension provides the seven live tools.
+1. If you installed only with `npx skills`, also use one of the client setup paths above. Skills teach judgment; MCP or the native Pi extension provides the seven live tools.
 2. Pi reads the selected Webs CLI profile from `~/.config/webs/config.json` (or `WEBS_CONFIG`). Run `webs login --profile <name>`, select it with `WEBS_PROFILE` when needed, and never paste or print its bearer token. Environment-only setups may use `WEBS_MCP_TOKEN` and `WEBS_MCP_URL`.
-3. Invoke `readiness`. For generic MCP clients, complete OAuth in the client-owned browser or credential flow when prompted. The intended connection requests `read search fetch save recall context ask watch run`.
+3. Invoke `readiness`. OAuth-capable clients open the Webs-owned authorization flow; generic clients can send a Connect bearer through `WEBS_API_TOKEN`. The intended connection requests `read search fetch save recall context ask watch run`.
 4. Invoke `readiness` again after authentication. Treat the connection as ready only when Webs confirms auth, entitlement, granted scopes, and tool availability.
 5. Exercise memory deliberately: call `context` with `{"task":"...","why":"..."}` only when prior memory may help; call `recall` with `{"query":"..."}`; then save a real source URL with `{"urls":["https://example.com"],"task":"...","why":"..."}`.
 

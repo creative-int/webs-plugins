@@ -6,8 +6,8 @@
  *   pnpm generate --help   # print usage
  *
  * Generated files (never hand-edit): .mcp.json, .agents/plugins/marketplace.json,
- * .claude-plugin/*, .codex-plugin/*, .cursor-plugin/*, server.json, and the
- * README install block.
+ * .claude-plugin/*, .codex-plugin/*, .cursor-plugin/*, clients/*, server.json,
+ * and the README install block.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -34,50 +34,25 @@ Options:
 	process.exit(0);
 }
 
-/** Per-client install instructions; also the source for README. */
+/** Per-client install instructions; copied from the Webs canonical manifest. */
 export const installClients = [
-	{
-		id: "mcp",
-		label: "Any MCP client (generic .mcp.json)",
-		blurb:
-			"Add Webs as a remote Streamable HTTP server, then invoke `readiness` to begin client-owned OAuth. Never paste a bearer into this repository.",
-		steps: [
-			json({
-				mcpServers: {
-					[webs.mcp.id]: {
-						type: webs.mcp.type,
-						url: webs.mcp.url,
-						transport: webs.mcp.transport,
-					},
-				},
-			}).trim(),
-		],
-	},
-	{
-		id: "codex-mcp",
-		label: "Codex (direct MCP)",
-		blurb:
-			"Add Webs as a Streamable HTTP server in `~/.codex/config.toml` (or a trusted project's `.codex/config.toml`), then run `codex mcp login webs` for OAuth.",
-		language: "toml",
-		steps: [
-			`[mcp_servers.${webs.mcp.id}]`,
-			`url = "${webs.mcp.url}"`,
-		],
-	},
-	{
-		id: "claude-code-mcp",
-		label: "Claude Code (direct MCP)",
-		blurb:
-			"Add Webs as a native HTTP MCP server, then complete OAuth when Claude prompts.",
-		steps: [
-			`claude mcp add --transport http ${webs.mcp.id} ${webs.mcp.url}`,
-		],
-	},
+	...webs.connectClients.map((client) => ({
+		id: client.id,
+		label: client.label,
+		blurb: `Copy this Webs setup to \`${client.detail}\`. OAuth-capable clients authorize on first use; invoke \`readiness\` after connecting.`,
+		language:
+			client.id === "codex"
+				? "toml"
+				: client.id === "claude" || client.id === "generic"
+					? "sh"
+					: "json",
+		steps: [client.value],
+	})),
 	{
 		id: "skills",
 		label: "Any agent (npx skills)",
 		blurb:
-			"Install the four Webs judgment skills. This does not connect MCP by itself; also use the generic MCP configuration above unless your agent already has the Webs plugin.",
+			"Install the four Webs judgment skills. This does not connect MCP by itself; also use one of the client setup paths above unless your agent already has the Webs plugin.",
 		steps: [`npx skills add ${slug()}`],
 	},
 	{
@@ -112,7 +87,7 @@ export const installClients = [
 	},
 	{
 		id: "cursor",
-		label: "Cursor",
+		label: "Cursor (plugin)",
 		blurb:
 			"Install Webs from the Cursor plugin marketplace, then invoke `readiness` and complete OAuth when Cursor prompts.",
 		steps: [`Cursor → Settings → Plugins → Add marketplace → ${slug()}`],
@@ -294,16 +269,34 @@ const files: Record<string, string> = {
 		repository: { url: webs.repository, source: "github" },
 		remotes: [{ type: webs.mcp.transport, url: webs.mcp.url }],
 	}),
+	...Object.fromEntries(
+		webs.connectClients.map((client) => [
+			`clients/${client.id}/${clientFilename(client.id)}`,
+			`${client.value}\n`,
+		]),
+	),
 };
+
+function clientFilename(id: (typeof webs.connectClients)[number]["id"]) {
+	switch (id) {
+		case "codex":
+			return "config.toml";
+		case "claude":
+			return "add.sh";
+		case "cursor":
+			return "mcp.json";
+		case "windsurf":
+			return "mcp_config.json";
+		case "vscode":
+			return "mcp.json";
+		case "generic":
+			return "initialize.sh";
+	}
+}
 
 function readmeInstallBlock() {
 	const lines = installClients.map((client) => {
-		const language =
-			"language" in client
-				? client.language
-				: client.id === "mcp"
-					? "json"
-					: "sh";
+		const language = "language" in client ? client.language : "sh";
 		const body = [`\`\`\`${language}`, ...client.steps, "```"].join("\n");
 		return `### ${client.label}\n\n${client.blurb}\n\n${body}`;
 	});
@@ -311,9 +304,9 @@ function readmeInstallBlock() {
 
 Every install path converges on the same remote MCP server and Webs-owned OAuth flow:
 
-1. If you installed only with \`npx skills\`, also add the generic MCP configuration above. Skills teach judgment; MCP or the native Pi extension provides the seven live tools.
+1. If you installed only with \`npx skills\`, also use one of the client setup paths above. Skills teach judgment; MCP or the native Pi extension provides the seven live tools.
 2. Pi reads the selected Webs CLI profile from \`~/.config/webs/config.json\` (or \`WEBS_CONFIG\`). Run \`webs login --profile <name>\`, select it with \`WEBS_PROFILE\` when needed, and never paste or print its bearer token. Environment-only setups may use \`WEBS_MCP_TOKEN\` and \`WEBS_MCP_URL\`.
-3. Invoke \`readiness\`. For generic MCP clients, complete OAuth in the client-owned browser or credential flow when prompted. The intended connection requests \`${webs.oauthScopes.join(" ")}\`.
+3. Invoke \`readiness\`. OAuth-capable clients open the Webs-owned authorization flow; generic clients can send a Connect bearer through \`WEBS_API_TOKEN\`. The intended connection requests \`${webs.oauthScopes.join(" ")}\`.
 4. Invoke \`readiness\` again after authentication. Treat the connection as ready only when Webs confirms auth, entitlement, granted scopes, and tool availability.
 5. Exercise memory deliberately: call \`context\` with \`{"task":"...","why":"..."}\` only when prior memory may help; call \`recall\` with \`{"query":"..."}\`; then save a real source URL with \`{"urls":["https://example.com"],"task":"...","why":"..."}\`.
 

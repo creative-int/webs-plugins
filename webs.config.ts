@@ -1,10 +1,12 @@
 /**
  * Canonical source of truth for every Webs install adapter.
  *
- * One config in, every client manifest out. Run `pnpm generate` to emit
+ * Product metadata plus the generated Webs connect snapshot in, every client
+ * manifest out. Run `pnpm generate` to emit
  * `.mcp.json`, Cursor / Codex / Claude Code plugin manifests, MCP Registry
  * `server.json`, and the README install block. Never hand-edit generated files.
  */
+import { websConnect } from "./webs-connect.generated.ts";
 
 export type WebsToolName =
 	| "save"
@@ -28,7 +30,7 @@ export type WebsOAuthScope =
 
 export type McpServerConfig = {
 	type: "http";
-	url: "https://webs.creative-int.com/mcp";
+	url: string;
 };
 
 export interface WebsConfig {
@@ -51,6 +53,7 @@ export interface WebsConfig {
 		id: string;
 		transport: "streamable-http";
 	};
+	connectClients: typeof websConnect.clients;
 	pi: {
 		extensions: string[];
 		skills: string[];
@@ -85,7 +88,7 @@ export interface WebsConfig {
 export const webs = {
 	name: "webs",
 	displayName: "Webs",
-	version: "0.1.1",
+	version: "0.1.2",
 	tagline: "Give your agents the web as memory.",
 	shortDescription:
 		"Connect agents to Webs memory over remote MCP: save, recall, ask, watch, run, readiness, and on-demand context.",
@@ -109,9 +112,10 @@ export const webs = {
 	mcp: {
 		id: "webs",
 		type: "http",
-		url: "https://webs.creative-int.com/mcp",
-		transport: "streamable-http",
+		url: websConnect.server.url,
+		transport: websConnect.server.transport,
 	},
+	connectClients: websConnect.clients,
 	pi: {
 		extensions: ["./extensions/index.ts"],
 		skills: ["./skills"],
