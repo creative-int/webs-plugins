@@ -1,29 +1,38 @@
 # Webs plugins - agent guide
 
-Public distribution repo for Webs: generated plugin manifests for Cursor,
-Codex, and Claude Code, `.mcp.json`, MCP Registry `server.json`, and the Webs
-memory skill pack. The hero is inbound MCP plus portable judgment guidance:
-external agents connect to Webs' remote endpoint and call the seven memory verbs
-by judgment.
+Public distribution repo for Webs: generated setup for Codex, Claude Code,
+Cursor, Windsurf, VS Code, generic Streamable HTTP clients, and Pi, plus
+`.mcp.json`, MCP Registry `server.json`, and the Webs memory skill pack. The
+hero is inbound MCP plus portable judgment guidance: external agents connect to
+Webs' remote endpoint and call the seven memory verbs by judgment.
 
 ## The one rule: generate, don't hand-edit
 
-`webs.config.ts` is the single source of truth. Every manifest, `.mcp.json`,
-`server.json`, and the README install block are emitted from it by
-`tooling/generate.ts`. Edit the config, then:
+`webs.config.ts` is the product/plugin metadata source. Client connection shapes
+come from `webs-connect.generated.ts`, a public, secret-free snapshot of Webs'
+canonical `manifests/mcp-client-connect.json`. Every manifest, `.mcp.json`,
+client setup, `server.json`, and the README install block is emitted by
+`tooling/generate.ts`. Refresh the snapshot when Webs changes client formats:
+
+```sh
+pnpm sync:webs-connect -- --source /path/to/webs/manifests/mcp-client-connect.json
+```
+
+Then generate and verify:
 
 ```sh
 pnpm generate
 pnpm verify
 ```
 
-Never hand-edit the generated files (`.mcp.json`, `.claude-plugin/*`,
-`.codex-plugin/*`, `.cursor-plugin/*`, `server.json`, the README
-`AUTO-GENERATED` block). CI runs `check:generated` and fails on drift.
+Never hand-edit the generated files (`webs-connect.generated.ts`, `clients/*`,
+`.mcp.json`, `.claude-plugin/*`, `.codex-plugin/*`, `.cursor-plugin/*`,
+`server.json`, the README `AUTO-GENERATED` block). CI runs `check:generated`
+and fails on drift.
 
 ## Scope
 
-- v0: central remote MCP metadata, three client manifests, `.mcp.json`,
+- v0: central remote MCP metadata, six client setups, three plugin manifests, `.mcp.json`,
   `server.json`, and four portable Webs memory skills.
 - Live origin: `https://webs.creative-int.com/mcp`.
 - The context verb is on demand only. Do not add automatic context injection,
@@ -50,8 +59,8 @@ Required root contract for this profile:
 - canonical config at `webs.config.ts`
 - generator and smoke tooling under `tooling/`
 - distributed skills under `skills/`
-- generated client adapters: `.mcp.json`, `server.json`, `.claude-plugin/`,
-  `.codex-plugin/`, `.cursor-plugin/`
+- generated client adapters: `clients/`, `.mcp.json`, `server.json`,
+  `.claude-plugin/`, `.codex-plugin/`, `.cursor-plugin/`
 
 Intentional omissions: `apps/`, `packages/`, `TESTING.md`, `knip.json`,
 `codecov.yml`, `biome.json`, `turbo.json`, `pnpm-workspace.yaml`, and `.npmrc`

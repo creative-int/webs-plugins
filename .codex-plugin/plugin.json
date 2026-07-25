@@ -1,6 +1,6 @@
 {
 	"name": "webs",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Connect agents to Webs memory over remote MCP: save, recall, ask, watch, run, readiness, and on-demand context.",
 	"author": {
 		"name": "creative-int",
