@@ -10,6 +10,7 @@
 		"workspaceLint": {
 			"allowedRootEntries": [
 				"clients",
+				"extensions",
 				"webs-connect.generated.ts",
 				"webs.config.ts"
 			]
