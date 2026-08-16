@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64, cic-macbook-pro]
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN || github.token }}
     steps:
@@ -53,7 +53,7 @@ jobs:
   requires-token:
     name: requires-token
     needs: verify
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64, cic-macbook-pro]
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN || github.token }}
       WEBS_MCP_TOKEN: ${{ secrets.WEBS_MCP_TOKEN }}
