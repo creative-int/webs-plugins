@@ -88,7 +88,7 @@ export interface WebsConfig {
 export const webs = {
 	name: "webs",
 	displayName: "Webs",
-	version: "0.1.2",
+	version: "0.1.3",
 	tagline: "Give your agents the web as memory.",
 	shortDescription:
 		"Connect agents to Webs memory over remote MCP: save, recall, ask, watch, run, readiness, and on-demand context.",
