@@ -54,7 +54,7 @@ test("registers exactly the production seven-tool surface without hooks", () => 
 	assert.equal(new Set(tools.map((tool) => tool.name)).size, 7);
 });
 
-test("mirrors production schema requirements, bounds, enums, feedback, scopes, and polling", () => {
+test("mirrors production schema requirements, URL-or-content bounds, enums, feedback, scopes, and polling", () => {
 	const schemas = Object.fromEntries(
 		websToolContracts.map((tool) => [tool.name, tool.parameters]),
 	) as unknown as Record<WebsToolName, Record<string, unknown>>;
@@ -65,12 +65,32 @@ test("mirrors production schema requirements, bounds, enums, feedback, scopes, a
 	const watch = schemas.watch as Schema;
 	const run = schemas.run as Schema;
 
-	assert.deepEqual(save.required, ["urls", "task", "why"]);
+	assert.deepEqual(save.required, ["task", "why"]);
+	assert.deepEqual(save.anyOf, [
+		{ required: ["urls"] },
+		{ required: ["content"] },
+	]);
 	assert.deepEqual(save.properties.urls, {
 		type: "array",
 		items: { type: "string", format: "uri" },
 		minItems: 1,
 		maxItems: 8,
+	});
+	assert.deepEqual(save.properties.content, {
+		type: "string",
+		maxLength: 200_000,
+		description:
+			"Private/local text to save directly. Use instead of urls; Webs does not fetch or publish it.",
+	});
+	assert.deepEqual(save.properties.title, {
+		type: "string",
+		description: "Optional title for supplied content.",
+	});
+	assert.deepEqual(save.properties.sourceUrl, {
+		type: "string",
+		format: "uri",
+		description:
+			"Optional public source URL to cite for supplied content. The content itself remains the supplied snapshot.",
 	});
 	assert.deepEqual(save.properties.via.enum, ["mcp", "extension"]);
 	assert.deepEqual(recall.properties.limit, {
@@ -115,6 +135,91 @@ test("mirrors production schema requirements, bounds, enums, feedback, scopes, a
 	for (const schema of Object.values(schemas)) {
 		assert.equal(schema.additionalProperties, false);
 	}
+});
+
+test("enforces the save URL-or-content runtime contract before transport", async () => {
+	const calls: WebsToolArguments[] = [];
+	const { tools } = register({
+		async callTool(_name, args) {
+			calls.push(args);
+			return { saved: true };
+		},
+	});
+	const save = tool(tools, "save");
+	const validInputs: WebsToolArguments[] = [
+		{
+			urls: Array.from(
+				{ length: 8 },
+				(_, index) => `https://example.com/source-${index + 1}`,
+			),
+			task: "Preserve selected sources",
+			why: "They support the current research decision",
+		},
+		{
+			content: "x".repeat(200_000),
+			sourceUrl: "https://example.com/source-snapshot",
+			task: "Preserve the supplied snapshot",
+			title: "Source snapshot",
+			why: "The snapshot should be recallable later",
+		},
+	];
+	for (const [index, input] of validInputs.entries()) {
+		const result = await save.execute(`valid_${index}`, input);
+		assert.equal(result.isError, undefined);
+		assert.equal(result.details.ok, true);
+	}
+	assert.equal(calls.length, 2);
+
+	const invalidInputs: WebsToolArguments[] = [
+		{
+			content: "mixed",
+			urls: ["https://example.com/source"],
+			task: "Reject a mixed save",
+			why: "The branches are exclusive",
+		},
+		{ task: "Reject no source", why: "One branch is required" },
+		{
+			urls: Array.from(
+				{ length: 9 },
+				(_, index) => `https://example.com/too-many-${index + 1}`,
+			),
+			task: "Reject an oversized batch",
+			why: "The MCP limit is eight URLs",
+		},
+		{
+			content: "x".repeat(200_001),
+			task: "Reject oversized content",
+			why: "The content limit is 200,000 characters",
+		},
+		{
+			urls: ["https://example.com/source"],
+			task: " ",
+			why: "Task must carry intent",
+		},
+		{
+			urls: ["https://example.com/source"],
+			task: "Reject a missing reason",
+			why: " ",
+		},
+		{
+			urls: ["ftp://example.com/source"],
+			task: "Reject a non-web source",
+			why: "Webs source URLs use HTTP or HTTPS",
+		},
+		{
+			sourceUrl: "https://example.com/source-snapshot",
+			urls: ["https://example.com/source"],
+			task: "Reject sourceUrl on a URL save",
+			why: "sourceUrl belongs only to supplied content",
+		},
+	];
+	for (const [index, input] of invalidInputs.entries()) {
+		const result = await save.execute(`invalid_${index}`, input);
+		assert.equal(result.isError, true);
+		assert.equal(errorKind(result), "mcp");
+		assert.match(result.content[0]?.text ?? "", /exactly one input/);
+	}
+	assert.equal(calls.length, 2, "invalid saves must not reach transport");
 });
 
 test("preserves arguments and returns readable text with structured details", async () => {

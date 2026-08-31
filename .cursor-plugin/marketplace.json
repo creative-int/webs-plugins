@@ -14,7 +14,7 @@
 				"protectedBy": [
 					"save"
 				],
-				"description": "Save one to eight source URLs into analyzed Webs memory. Agent deposits require task and why."
+				"description": "Save one to eight source URLs or one supplied-content snapshot of up to 200,000 characters. Agent deposits require task and why."
 			},
 			{
 				"name": "recall",
@@ -87,7 +87,7 @@
 					"save-memory",
 					"webs-save"
 				],
-				"description": "Save durable source URLs with task and why."
+				"description": "Save durable source URLs or one supplied snapshot with task and why."
 			},
 			{
 				"name": "webs-recall-ask",

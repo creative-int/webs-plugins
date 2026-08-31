@@ -1,5 +1,8 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { websToolContracts } from "./schemas.ts";
+import {
+	isValidWebsSaveArguments,
+	websToolContracts,
+} from "./schemas.ts";
 import { createWebsTransport, sanitizeValue, WebsExtensionError } from "./transport.ts";
 import type {
 	WebsPiExtensionFactory,
@@ -41,6 +44,15 @@ const createWebsPiExtension: WebsPiExtensionFactory = (
 				parameters: contract.parameters,
 				async execute(_toolCallId, params, signal) {
 					try {
+						if (
+							contract.name === "save" &&
+							!isValidWebsSaveArguments(params as WebsToolArguments)
+						) {
+							throw new WebsExtensionError(
+								"mcp",
+								"Webs save requires task and why plus exactly one input: one to eight HTTP(S) URLs, or supplied content up to 200,000 characters. sourceUrl is valid only with supplied content.",
+							);
+						}
 						const result = sanitizeValue(
 							await transport.callTool(
 								contract.name,

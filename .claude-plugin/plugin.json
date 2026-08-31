@@ -1,6 +1,6 @@
 {
 	"name": "webs",
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"description": "Connect agents to Webs memory over remote MCP: save, recall, ask, watch, run, readiness, and on-demand context.",
 	"author": {
 		"name": "creative-int",
@@ -30,7 +30,7 @@
 				"protectedBy": [
 					"save"
 				],
-				"description": "Save one to eight source URLs into analyzed Webs memory. Agent deposits require task and why."
+				"description": "Save one to eight source URLs or one supplied-content snapshot of up to 200,000 characters. Agent deposits require task and why."
 			},
 			{
 				"name": "recall",
@@ -103,7 +103,7 @@
 					"save-memory",
 					"webs-save"
 				],
-				"description": "Save durable source URLs with task and why."
+				"description": "Save durable source URLs or one supplied snapshot with task and why."
 			},
 			{
 				"name": "webs-recall-ask",

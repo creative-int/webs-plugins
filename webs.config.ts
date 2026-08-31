@@ -88,12 +88,12 @@ export interface WebsConfig {
 export const webs = {
 	name: "webs",
 	displayName: "Webs",
-	version: "0.1.3",
+	version: "0.1.4",
 	tagline: "Give your agents the web as memory.",
 	shortDescription:
 		"Connect agents to Webs memory over remote MCP: save, recall, ask, watch, run, readiness, and on-demand context.",
 	longDescription:
-		"Webs is where the web becomes memory. The remote MCP server gives agents the same memory surface humans use: save source URLs with task and why, recall saved memory with citations, ask questions over memory, create monitors, run durable research, check readiness, and request small task-affinity context packets. The context verb is strictly on demand; this plugin teaches judgment rather than automatic prompt injection.",
+		"Webs is where the web becomes memory. The remote MCP server gives agents the same memory surface humans use: save source URLs or supplied snapshots with task and why, recall saved memory with citations, ask questions over memory, create monitors, run durable research, check readiness, and request small task-affinity context packets. The context verb is strictly on demand; this plugin teaches judgment rather than automatic prompt injection.",
 	homepage: "https://webs.creative-int.com",
 	repository: "https://github.com/creative-int/webs-plugins",
 	license: "MIT",
@@ -147,7 +147,7 @@ export const webs = {
 			name: "save",
 			protectedBy: ["save"],
 			description:
-				"Save one to eight source URLs into analyzed Webs memory. Agent deposits require task and why.",
+				"Save one to eight source URLs or one supplied-content snapshot of up to 200,000 characters. Agent deposits require task and why.",
 		},
 		{
 			name: "recall",
@@ -199,7 +199,8 @@ export const webs = {
 		{
 			name: "webs-save",
 			aliases: ["save-memory", "webs-save"],
-			description: "Save durable source URLs with task and why.",
+			description:
+				"Save durable source URLs or one supplied snapshot with task and why.",
 		},
 		{
 			name: "webs-recall-ask",

@@ -148,9 +148,9 @@ Every install path converges on the same remote MCP server and Webs-owned OAuth 
 2. Pi reads the selected Webs CLI profile from `~/.config/webs/config.json` (or `WEBS_CONFIG`). Run `webs login --profile <name>`, select it with `WEBS_PROFILE` when needed, and never paste or print its bearer token. Environment-only setups may use `WEBS_MCP_TOKEN` and `WEBS_MCP_URL`.
 3. Invoke `readiness`. OAuth-capable clients open the Webs-owned authorization flow; generic clients can send a Connect bearer through `WEBS_API_TOKEN`. The intended connection requests `read search fetch save recall context ask watch run`.
 4. Invoke `readiness` again after authentication. Treat the connection as ready only when Webs confirms auth, entitlement, granted scopes, and tool availability.
-5. Exercise memory deliberately: call `context` with `{"task":"...","why":"..."}` only when prior memory may help; call `recall` with `{"query":"..."}`; then save a real source URL with `{"urls":["https://example.com"],"task":"...","why":"..."}`.
+5. Exercise memory deliberately: call `context` with `{"task":"...","why":"..."}` only when prior memory may help; call `recall` with `{"query":"..."}`; then save a real source URL with `{"urls":["https://example.com"],"task":"...","why":"..."}` or one supplied snapshot with `content`, `task`, and `why`.
 
-Use `ask` when you need a cited answer rather than retrieval results. Replace the example URL before saving.
+Use `ask` when you need a cited answer rather than retrieval results. Replace the example URL before saving. A save accepts exactly one input branch: one to eight URLs, or supplied content up to 200,000 characters with optional `title` and `sourceUrl`; never send both.
 
 <!-- AUTO-GENERATED:INSTALL END -->
 
@@ -159,6 +159,33 @@ To preview the available skills without installing:
 ```sh
 npx skills add creative-int/webs-plugins --list
 ```
+
+## Save deliberately
+
+Native MCP callers save one to eight already-selected HTTP(S) sources with
+`task`, `why`, and a stable `idempotencyKey`. Shell callers can compose one
+explicit Search saved run into a bounded, inspectable Webs plan:
+
+```sh
+search runs show <explicit-id-or-path> --urls --limit 8 |
+  webs save - --limit 8 --dry-run --task "<task>" --why "<why>"
+```
+
+Inspect that dry-run, then repeat the same explicit command without
+`--dry-run`. Never select `latest`, parse Search's private run files, pipe a
+query/report/provider payload, or save automatically after search.
+
+For one supplied-content snapshot of up to 200,000 characters, call the native
+`save` tool with `content` instead of `urls`; `title` and `sourceUrl` are
+optional:
+
+```json
+{"content":"<supplied snapshot>","title":"<title>","sourceUrl":"https://example.com/source","task":"<task>","why":"<why>","idempotencyKey":"<stable-key>"}
+```
+
+Do not combine `urls` and `content`. A source URL save creates fresh Webs-owned
+capture provenance; a supplied snapshot does not establish multi-source report
+lineage.
 
 ## How the companion fits together
 
@@ -171,7 +198,7 @@ npx skills add creative-int/webs-plugins --list
 | `readiness` | Proves auth, entitlement, granted scopes, and tool availability. It is a tool protected by `read`, not an OAuth scope. |
 | `context` | Returns a small task-affinity packet only when the agent explicitly requests one. No hooks or automatic injection are included. |
 | `recall` / `ask` | `recall` returns inspectable memory results; `ask` returns a cited answer over memory. |
-| `save` | Saves one to eight source URLs. Agent calls require `task` and `why`; content and selection inputs are not supported. |
+| `save` | Saves either one to eight source URLs or one supplied-content snapshot up to 200,000 characters. Agent calls require `task` and `why`. |
 
 ## MCP surface
 
@@ -180,7 +207,7 @@ verbs:
 
 | Tool | Protected by | Purpose |
 | --- | --- | --- |
-| `save` | `save` | Save one to eight source URLs. Agent deposits require task and why. |
+| `save` | `save` | Save one to eight source URLs or one supplied-content snapshot. Agent deposits require task and why. |
 | `recall` | `recall` | Hybrid semantic plus lexical retrieval over saved memory, with citations and scores. |
 | `context` | `context` or `recall` | On-demand task-affinity packet for agents; never automatic injection. |
 | `ask` | `ask` | Question over saved memory, with modes for saved-only, saved-memory, and fresh-then-saved. |
@@ -191,7 +218,7 @@ verbs:
 ## Included skills
 
 - **`webs-memory`** — judgment rule for when to use Webs memory at all.
-- **`webs-save`** — save durable source URLs with task and why.
+- **`webs-save`** — save durable source URLs or one supplied snapshot with task and why.
 - **`webs-recall-ask`** — choose recall versus ask versus fresh search.
 - **`webs-context`** — request small on-demand context packets without hooks.
 

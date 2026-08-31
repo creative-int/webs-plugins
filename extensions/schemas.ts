@@ -1,4 +1,5 @@
 import { Type, type TSchema, type TUnsafe } from "typebox";
+import { Check } from "typebox/value";
 import type { WebsToolArguments, WebsToolName } from "./types.ts";
 
 export interface WebsToolContract {
@@ -26,6 +27,101 @@ const feedbackSchema = {
 		"Optional result feedback action. Use action='flag' with reason='not_useful' to record a saved battery case.",
 } as const;
 
+const saveParameters = schema({
+	type: "object",
+	properties: {
+		urls: {
+			type: "array",
+			items: { type: "string", format: "uri" },
+			minItems: 1,
+			maxItems: 8,
+		},
+		content: {
+			type: "string",
+			maxLength: 200_000,
+			description:
+				"Private/local text to save directly. Use instead of urls; Webs does not fetch or publish it.",
+		},
+		title: {
+			type: "string",
+			description: "Optional title for supplied content.",
+		},
+		sourceUrl: {
+			type: "string",
+			format: "uri",
+			description:
+				"Optional public source URL to cite for supplied content. The content itself remains the supplied snapshot.",
+		},
+		prompt: {
+			type: "string",
+			description: "Optional analysis goal or focus instruction.",
+		},
+		task: {
+			type: "string",
+			description: "Required agent task or workflow that caused this save.",
+		},
+		why: {
+			type: "string",
+			description:
+				"Required reason this URL should be remembered for later recall.",
+		},
+		spaceId: { type: "string", description: "Optional space ID." },
+		space: {
+			type: "string",
+			description: "Optional space name, slug, or ID.",
+		},
+		tags: {
+			type: "array",
+			items: { type: "string" },
+			description: "Optional tags for organization.",
+		},
+		via: {
+			type: "string",
+			enum: ["mcp", "extension"],
+			description:
+				"Optional origin surface for MCP-backed saves. Extension clients pass extension.",
+		},
+		note: {
+			type: "string",
+			description: "Optional operator note saved alongside the web.",
+		},
+		idempotencyKey: {
+			type: "string",
+			description: "Optional stable key for deduplication.",
+		},
+	},
+	anyOf: [{ required: ["urls"] }, { required: ["content"] }],
+	required: ["task", "why"],
+	additionalProperties: false,
+});
+
+export function isValidWebsSaveArguments(args: WebsToolArguments): boolean {
+	const urls = Array.isArray(args.urls) ? args.urls : [];
+	const hasUrls = urls.length > 0;
+	const hasContent =
+		typeof args.content === "string" && args.content.trim().length > 0;
+	return (
+		Check(saveParameters, args) &&
+		hasUrls !== hasContent &&
+		typeof args.task === "string" &&
+		args.task.trim().length > 0 &&
+		typeof args.why === "string" &&
+		args.why.trim().length > 0 &&
+		(!hasUrls || urls.every(isHttpUrl)) &&
+		(args.sourceUrl === undefined || (hasContent && isHttpUrl(args.sourceUrl)))
+	);
+}
+
+function isHttpUrl(value: unknown): boolean {
+	if (typeof value !== "string") return false;
+	try {
+		const url = new URL(value);
+		return url.protocol === "http:" || url.protocol === "https:";
+	} catch {
+		return false;
+	}
+}
+
 /** Exact public mirror of the production Webs v1Tools contract. */
 export const websToolContracts: readonly WebsToolContract[] = [
 	{
@@ -43,57 +139,8 @@ export const websToolContracts: readonly WebsToolContract[] = [
 		name: "save",
 		label: "Webs: Save",
 		description:
-			"Save one or more URLs into Webs memory and queue analysis so the result can be recalled later. Returns saved web IDs and queued status.",
-		parameters: schema({
-			type: "object",
-			properties: {
-				urls: {
-					type: "array",
-					items: { type: "string", format: "uri" },
-					minItems: 1,
-					maxItems: 8,
-				},
-				prompt: {
-					type: "string",
-					description: "Optional analysis goal or focus instruction.",
-				},
-				task: {
-					type: "string",
-					description: "Required agent task or workflow that caused this save.",
-				},
-				why: {
-					type: "string",
-					description:
-						"Required reason this URL should be remembered for later recall.",
-				},
-				spaceId: { type: "string", description: "Optional space ID." },
-				space: {
-					type: "string",
-					description: "Optional space name, slug, or ID.",
-				},
-				tags: {
-					type: "array",
-					items: { type: "string" },
-					description: "Optional tags for organization.",
-				},
-				via: {
-					type: "string",
-					enum: ["mcp", "extension"],
-					description:
-						"Optional origin surface for MCP-backed saves. Extension clients pass extension.",
-				},
-				note: {
-					type: "string",
-					description: "Optional operator note saved alongside the web.",
-				},
-				idempotencyKey: {
-					type: "string",
-					description: "Optional stable key for deduplication.",
-				},
-			},
-			required: ["urls", "task", "why"],
-			additionalProperties: false,
-		}),
+			"Save one or more URLs, or supplied private/local text, into Webs memory. URL analysis queues asynchronously; supplied content is deposited with source-backed provenance without an external fetch.",
+		parameters: saveParameters,
 	},
 	{
 		name: "recall",

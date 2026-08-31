@@ -308,9 +308,9 @@ Every install path converges on the same remote MCP server and Webs-owned OAuth 
 2. Pi reads the selected Webs CLI profile from \`~/.config/webs/config.json\` (or \`WEBS_CONFIG\`). Run \`webs login --profile <name>\`, select it with \`WEBS_PROFILE\` when needed, and never paste or print its bearer token. Environment-only setups may use \`WEBS_MCP_TOKEN\` and \`WEBS_MCP_URL\`.
 3. Invoke \`readiness\`. OAuth-capable clients open the Webs-owned authorization flow; generic clients can send a Connect bearer through \`WEBS_API_TOKEN\`. The intended connection requests \`${webs.oauthScopes.join(" ")}\`.
 4. Invoke \`readiness\` again after authentication. Treat the connection as ready only when Webs confirms auth, entitlement, granted scopes, and tool availability.
-5. Exercise memory deliberately: call \`context\` with \`{"task":"...","why":"..."}\` only when prior memory may help; call \`recall\` with \`{"query":"..."}\`; then save a real source URL with \`{"urls":["https://example.com"],"task":"...","why":"..."}\`.
+5. Exercise memory deliberately: call \`context\` with \`{"task":"...","why":"..."}\` only when prior memory may help; call \`recall\` with \`{"query":"..."}\`; then save a real source URL with \`{"urls":["https://example.com"],"task":"...","why":"..."}\` or one supplied snapshot with \`content\`, \`task\`, and \`why\`.
 
-Use \`ask\` when you need a cited answer rather than retrieval results. Replace the example URL before saving.`);
+Use \`ask\` when you need a cited answer rather than retrieval results. Replace the example URL before saving. A save accepts exactly one input branch: one to eight URLs, or supplied content up to 200,000 characters with optional \`title\` and \`sourceUrl\`; never send both.`);
 	return lines.join("\n\n");
 }
 

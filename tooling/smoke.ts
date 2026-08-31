@@ -11,6 +11,7 @@ import createWebsPiExtension, {
 	websToolContracts,
 	type WebsTransport,
 } from "../extensions/webs.ts";
+import { isValidWebsSaveArguments } from "../extensions/schemas.ts";
 import { webs } from "../webs.config.ts";
 
 const HELP = process.argv.includes("--help") || process.argv.includes("-h");
@@ -130,6 +131,71 @@ function checkPiContract() {
 		JSON.stringify(websToolContracts.map((tool) => tool.name).sort()) ===
 			JSON.stringify(expectedToolNames),
 		"Pi schema contract drifted from webs.config.ts",
+	);
+	const save = registered.find((tool) => tool.name === "save")?.parameters as
+		| {
+				anyOf?: unknown;
+				additionalProperties?: unknown;
+				properties?: Record<string, Record<string, unknown>>;
+				required?: unknown;
+		  }
+		| undefined;
+	assert(
+		JSON.stringify(save?.anyOf) ===
+			JSON.stringify([
+				{ required: ["urls"] },
+				{ required: ["content"] },
+			]),
+		"Pi save schema must expose URL-or-content branches",
+	);
+	assert(
+		JSON.stringify(save?.required) === JSON.stringify(["task", "why"]),
+		"Pi save schema must require task and why for both branches",
+	);
+	assert(
+		save?.properties?.urls?.maxItems === 8,
+		"Pi save schema must bound URL batches at eight",
+	);
+	assert(
+		save?.properties?.content?.maxLength === 200_000,
+		"Pi save schema must bound supplied content at 200,000 characters",
+	);
+	assert(
+		save?.properties?.sourceUrl?.format === "uri",
+		"Pi save schema must expose sourceUrl for supplied content",
+	);
+	assert(
+		isValidWebsSaveArguments({
+			urls: ["https://example.com/source"],
+			task: "Preserve a selected source",
+			why: "It supports the current decision",
+		}),
+		"Pi save runtime must accept the URL branch",
+	);
+	assert(
+		isValidWebsSaveArguments({
+			content: "Supplied snapshot",
+			sourceUrl: "https://example.com/snapshot",
+			task: "Preserve a supplied snapshot",
+			why: "It should be recallable later",
+		}),
+		"Pi save runtime must accept the supplied-content branch",
+	);
+	assert(
+		!isValidWebsSaveArguments({
+			content: "Mixed snapshot",
+			urls: ["https://example.com/source"],
+			task: "Reject a mixed save",
+			why: "The branches are exclusive",
+		}),
+		"Pi save runtime must reject mixed URL and content input",
+	);
+	assert(
+		!isValidWebsSaveArguments({
+			task: "Reject a missing input",
+			why: "One save branch is required",
+		}),
+		"Pi save runtime must reject a missing URL-or-content input",
 	);
 	const run = registered.find((tool) => tool.name === "run")?.parameters as
 		| { anyOf?: unknown; additionalProperties?: unknown }
@@ -347,9 +413,6 @@ function checkPublicContractCopy() {
 	];
 	const forbidden: Array<[RegExp, string]> = [
 		[/\bwebs\.(?:read|search|fetch|save|recall|context|ask|watch|run|readiness)\b/i, "synthetic webs.* OAuth scope"],
-		[/\bURL\(s\) or content\b/i, "URL-or-content save claim"],
-		[/\bselected[- ]content\b/i, "selected-content save claim"],
-		[/\bdistilled[- ]text\b/i, "distilled-text save claim"],
 		[/\/Users\/luke\//, "private user path"],
 		[/\/private\/tmp\/webs-pa\//, "private lane path"],
 		[/~\/\.agents(?:\/|\b)/, "private agent-runtime path"],
@@ -371,7 +434,22 @@ function checkPublicContractCopy() {
 	);
 	assert(
 		readme.includes('{"urls":["https://example.com"],"task":"...","why":"..."}'),
-		"README is missing the URL-only save round trip",
+		"README is missing the URL save round trip",
+	);
+	assert(
+		readme.includes('"content":"<supplied snapshot>"') &&
+			readme.includes('"sourceUrl":"https://example.com/source"'),
+		"README is missing supplied-content save guidance",
+	);
+	assert(
+		readme.includes(
+			"search runs show <explicit-id-or-path> --urls --limit 8",
+		) && readme.includes("webs save - --limit 8 --dry-run"),
+		"README is missing the explicit Search-run dry-run path",
+	);
+	assert(
+		!readme.includes("search runs show latest"),
+		"README must not teach concurrent-unsafe latest-run selection",
 	);
 	assert(
 		readme.includes(
