@@ -90,7 +90,19 @@ const saveParameters = schema({
 			description: "Optional stable key for deduplication.",
 		},
 	},
-	anyOf: [{ required: ["urls"] }, { required: ["content"] }],
+	anyOf: [
+		{
+			required: ["urls"],
+			not: {
+				anyOf: [
+					{ required: ["content"] },
+					{ required: ["title"] },
+					{ required: ["sourceUrl"] },
+				],
+			},
+		},
+		{ required: ["content"], not: { required: ["urls"] } },
+	],
 	required: ["task", "why"],
 	additionalProperties: false,
 });
@@ -108,6 +120,7 @@ export function isValidWebsSaveArguments(args: WebsToolArguments): boolean {
 		typeof args.why === "string" &&
 		args.why.trim().length > 0 &&
 		(!hasUrls || urls.every(isHttpUrl)) &&
+		(args.title === undefined || hasContent) &&
 		(args.sourceUrl === undefined || (hasContent && isHttpUrl(args.sourceUrl)))
 	);
 }

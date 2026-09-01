@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { TSchema } from "typebox";
+import { Check } from "typebox/value";
 import createWebsPiExtension, {
 	createWebsTransport,
 	websToolContracts,
@@ -67,8 +69,17 @@ test("mirrors production schema requirements, URL-or-content bounds, enums, feed
 
 	assert.deepEqual(save.required, ["task", "why"]);
 	assert.deepEqual(save.anyOf, [
-		{ required: ["urls"] },
-		{ required: ["content"] },
+		{
+			required: ["urls"],
+			not: {
+				anyOf: [
+					{ required: ["content"] },
+					{ required: ["title"] },
+					{ required: ["sourceUrl"] },
+				],
+			},
+		},
+		{ required: ["content"], not: { required: ["urls"] } },
 	]);
 	assert.deepEqual(save.properties.urls, {
 		type: "array",
@@ -135,6 +146,56 @@ test("mirrors production schema requirements, URL-or-content bounds, enums, feed
 	for (const schema of Object.values(schemas)) {
 		assert.equal(schema.additionalProperties, false);
 	}
+});
+
+test("validates title as supplied-content-only in the public save schema", () => {
+	const save = websToolContracts.find((contract) => contract.name === "save");
+	assert.ok(save);
+	assert.equal(
+		Check(save.parameters, {
+			urls: ["https://example.com/source"],
+			task: "Reject a title on the URL branch",
+			title: "Ignored title",
+			why: "URL saves cannot apply a supplied-content title",
+		}),
+		false,
+	);
+	assert.equal(
+		Check(save.parameters, {
+			content: "Supplied snapshot",
+			task: "Accept a title on supplied content",
+			title: "Snapshot title",
+			why: "The supplied snapshot title is applied",
+		}),
+		true,
+	);
+});
+
+test("publishes title branch parity in the registered Pi tool manifest", () => {
+	const { tools } = register({
+		async callTool() {
+			return {};
+		},
+	});
+	const save = tool(tools, "save").parameters as TSchema;
+	assert.equal(
+		Check(save, {
+			urls: ["https://example.com/source"],
+			task: "Reject the generated URL-title shape",
+			title: "Ignored title",
+			why: "The published manifest must reject ignored input",
+		}),
+		false,
+	);
+	assert.equal(
+		Check(save, {
+			content: "Supplied snapshot",
+			task: "Accept the generated content-title shape",
+			title: "Snapshot title",
+			why: "The published manifest must accept applied input",
+		}),
+		true,
+	);
 });
 
 test("enforces the save URL-or-content runtime contract before transport", async () => {
@@ -205,6 +266,12 @@ test("enforces the save URL-or-content runtime contract before transport", async
 			urls: ["ftp://example.com/source"],
 			task: "Reject a non-web source",
 			why: "Webs source URLs use HTTP or HTTPS",
+		},
+		{
+			urls: ["https://example.com/source"],
+			task: "Reject title on a URL save",
+			title: "Ignored title",
+			why: "title belongs only to supplied content",
 		},
 		{
 			sourceUrl: "https://example.com/source-snapshot",

@@ -7,6 +7,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { TSchema } from "typebox";
+import { Check } from "typebox/value";
 import createWebsPiExtension, {
 	websToolContracts,
 	type WebsTransport,
@@ -143,8 +145,17 @@ function checkPiContract() {
 	assert(
 		JSON.stringify(save?.anyOf) ===
 			JSON.stringify([
-				{ required: ["urls"] },
-				{ required: ["content"] },
+				{
+					required: ["urls"],
+					not: {
+						anyOf: [
+							{ required: ["content"] },
+							{ required: ["title"] },
+							{ required: ["sourceUrl"] },
+						],
+					},
+				},
+				{ required: ["content"], not: { required: ["urls"] } },
 			]),
 		"Pi save schema must expose URL-or-content branches",
 	);
@@ -164,6 +175,27 @@ function checkPiContract() {
 		save?.properties?.sourceUrl?.format === "uri",
 		"Pi save schema must expose sourceUrl for supplied content",
 	);
+	assert(save !== undefined, "Pi save schema is missing");
+	const urlWithTitle = {
+		urls: ["https://example.com/source"],
+		task: "Reject a title on the URL branch",
+		title: "Ignored title",
+		why: "URL saves cannot apply supplied-content titles",
+	};
+	const contentWithTitle = {
+		content: "Supplied snapshot",
+		task: "Preserve a supplied snapshot",
+		title: "Snapshot title",
+		why: "It should be recallable later",
+	};
+	assert(
+		!Check(save as TSchema, urlWithTitle),
+		"Pi save schema must reject title on the URL branch",
+	);
+	assert(
+		Check(save as TSchema, contentWithTitle),
+		"Pi save schema must accept title on supplied content",
+	);
 	assert(
 		isValidWebsSaveArguments({
 			urls: ["https://example.com/source"],
@@ -174,12 +206,14 @@ function checkPiContract() {
 	);
 	assert(
 		isValidWebsSaveArguments({
-			content: "Supplied snapshot",
+			...contentWithTitle,
 			sourceUrl: "https://example.com/snapshot",
-			task: "Preserve a supplied snapshot",
-			why: "It should be recallable later",
 		}),
 		"Pi save runtime must accept the supplied-content branch",
+	);
+	assert(
+		!isValidWebsSaveArguments(urlWithTitle),
+		"Pi save runtime must reject title on the URL branch",
 	);
 	assert(
 		!isValidWebsSaveArguments({

@@ -50,7 +50,7 @@ const createWebsPiExtension: WebsPiExtensionFactory = (
 						) {
 							throw new WebsExtensionError(
 								"mcp",
-								"Webs save requires task and why plus exactly one input: one to eight HTTP(S) URLs, or supplied content up to 200,000 characters. sourceUrl is valid only with supplied content.",
+								"Webs save requires task and why plus exactly one input: one to eight HTTP(S) URLs, or supplied content up to 200,000 characters. title and sourceUrl are valid only with supplied content.",
 							);
 						}
 						const result = sanitizeValue(
