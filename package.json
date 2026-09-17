@@ -80,7 +80,7 @@
 		}
 	},
 	"devDependencies": {
-		"@creative-int/evals": "1.8.0",
+		"@creative-int/evals": "^2.0.1",
 		"@earendil-works/pi-coding-agent": "0.80.10",
 		"@types/node": "^22.15.0",
 		"typescript": "^5.9.3"
