@@ -233,32 +233,32 @@ packages:
     engines: {node: '>=0.1.90'}
 
   '@creative-int/agents@1.23.0':
-    resolution: {integrity: sha512-OUe+BhYEbJklvVn2dI2Ia0ZDXUWHYQz1nuv9zN+oSCpvi8/1MvJAG0UKg5fr+qmDp81HfxjYkiPN9VdT4+qP9Q==, tarball: https://npm.pkg.github.com/download/@creative-int/agents/1.23.0/9a64e8887507c6515231eeedadfb00d26b5d3661}
+    resolution: {integrity: sha512-OUe+BhYEbJklvVn2dI2Ia0ZDXUWHYQz1nuv9zN+oSCpvi8/1MvJAG0UKg5fr+qmDp81HfxjYkiPN9VdT4+qP9Q==, tarball: https://npm-cache.luke-nittmann.workers.dev/download/@creative-int/agents/1.23.0/9a64e8887507c6515231eeedadfb00d26b5d3661}
     hasBin: true
     peerDependencies:
       convex: '>=1.0.0'
 
   '@creative-int/cli-core@1.2.0':
-    resolution: {integrity: sha512-HhwodaXbOS4mYJPgFUMfYPqBipkpDAGmT8Ht+9CI+wrfMiByuqQC8T4uX4nZz/bqJuR1UqrefnkW+inc6oJ5Ng==, tarball: https://npm.pkg.github.com/download/@creative-int/cli-core/1.2.0/44be9a89a7e9a4dc9785d002072127a9f0dc37f2}
+    resolution: {integrity: sha512-HhwodaXbOS4mYJPgFUMfYPqBipkpDAGmT8Ht+9CI+wrfMiByuqQC8T4uX4nZz/bqJuR1UqrefnkW+inc6oJ5Ng==, tarball: https://npm-cache.luke-nittmann.workers.dev/download/@creative-int/cli-core/1.2.0/44be9a89a7e9a4dc9785d002072127a9f0dc37f2}
     peerDependencies:
       '@oclif/core': ^4.0.0
 
   '@creative-int/cli-kit@0.2.1':
-    resolution: {integrity: sha512-WDeRyhVMxKFWy0ZCMCgz8XdHJiKUgwNzTvKThhme6t7uO7ZISIbqm0vlSWBGDCMFfmC8N2bzdol5reoIzFTCyg==, tarball: https://npm.pkg.github.com/download/@creative-int/cli-kit/0.2.1/2ce8f73fb5537529418a598a4f9152206a2c7479}
+    resolution: {integrity: sha512-WDeRyhVMxKFWy0ZCMCgz8XdHJiKUgwNzTvKThhme6t7uO7ZISIbqm0vlSWBGDCMFfmC8N2bzdol5reoIzFTCyg==, tarball: https://npm-cache.luke-nittmann.workers.dev/download/@creative-int/cli-kit/0.2.1/2ce8f73fb5537529418a598a4f9152206a2c7479}
     engines: {node: '>=22'}
     hasBin: true
 
   '@creative-int/cloudflare@0.1.0':
-    resolution: {integrity: sha512-fKTe4kwAfEeIMluWcwyw7k/n1y9/2h8fLVdE0DKOxp47HaxOL/t4p0TTODjNCuT1kciswIeuSVnp+WKajWoOAQ==, tarball: https://npm.pkg.github.com/download/@creative-int/cloudflare/0.1.0/c3b5db383b675d7c28ba5aeb2f70f56eec65b50c}
+    resolution: {integrity: sha512-fKTe4kwAfEeIMluWcwyw7k/n1y9/2h8fLVdE0DKOxp47HaxOL/t4p0TTODjNCuT1kciswIeuSVnp+WKajWoOAQ==, tarball: https://npm-cache.luke-nittmann.workers.dev/download/@creative-int/cloudflare/0.1.0/c3b5db383b675d7c28ba5aeb2f70f56eec65b50c}
 
   '@creative-int/computer-use@0.2.5':
-    resolution: {integrity: sha512-Z5n7tkYaVNTiK7+KLFG87UR0jh62LZOMmjhTGaNYZ89/c2UF+9jmPH5g9TadTNV415/F7agdpKUiw35PHFtmgA==, tarball: https://npm.pkg.github.com/download/@creative-int/computer-use/0.2.5/d1cccc79b5e86e98cd03552ed9cce92804218840}
+    resolution: {integrity: sha512-Z5n7tkYaVNTiK7+KLFG87UR0jh62LZOMmjhTGaNYZ89/c2UF+9jmPH5g9TadTNV415/F7agdpKUiw35PHFtmgA==, tarball: https://npm-cache.luke-nittmann.workers.dev/download/@creative-int/computer-use/0.2.5/d1cccc79b5e86e98cd03552ed9cce92804218840}
     hasBin: true
     peerDependencies:
       playwright: '>=1.40.0'
 
   '@creative-int/evals@1.8.0':
-    resolution: {integrity: sha512-Ns4VTAgZCAkZxSJAZwg/QfMVM/KEVe6EZfQy1yBm88/oAqqwBAai0U1q+bGPJCPmmIIzFTxputy0b/+mP9byvw==, tarball: https://npm.pkg.github.com/download/@creative-int/evals/1.8.0/7dd0186cffcfc112d070c568446a2335ab1fd8ff}
+    resolution: {integrity: sha512-Ns4VTAgZCAkZxSJAZwg/QfMVM/KEVe6EZfQy1yBm88/oAqqwBAai0U1q+bGPJCPmmIIzFTxputy0b/+mP9byvw==, tarball: https://npm-cache.luke-nittmann.workers.dev/download/@creative-int/evals/1.8.0/7dd0186cffcfc112d070c568446a2335ab1fd8ff}
     hasBin: true
     peerDependencies:
       '@creative-int/computer-use': ^0.2.2
@@ -266,12 +266,12 @@ packages:
       autoevals: '>=0.0.100'
 
   '@creative-int/observability@0.3.11':
-    resolution: {integrity: sha512-1nNbwB1nvtYHwQyyJjXTW+H2pGH2V8DBGP6DcrAum7MWFJT19lXFaLOsh0bAZzGYJTc+YP4/5fYcZ/1yWhaTag==, tarball: https://npm.pkg.github.com/download/@creative-int/observability/0.3.11/52971032e7fcd9e9fb820e57fe0e92d2ea65d4be}
+    resolution: {integrity: sha512-1nNbwB1nvtYHwQyyJjXTW+H2pGH2V8DBGP6DcrAum7MWFJT19lXFaLOsh0bAZzGYJTc+YP4/5fYcZ/1yWhaTag==, tarball: https://npm-cache.luke-nittmann.workers.dev/download/@creative-int/observability/0.3.11/52971032e7fcd9e9fb820e57fe0e92d2ea65d4be}
     peerDependencies:
       react: ^19.0.0
 
   '@creative-int/sources@0.4.0':
-    resolution: {integrity: sha512-LQe22IQd6DF2M6hDusqfedZvs+2LxukCX8Esn01kgpVCT8P6nbZf3NU+CGQ9FBMscmoK+oimfRJAyagqqBjuCA==, tarball: https://npm.pkg.github.com/download/@creative-int/sources/0.4.0/9a1f7225e1b99b90861b8de419d2b2741f124204}
+    resolution: {integrity: sha512-LQe22IQd6DF2M6hDusqfedZvs+2LxukCX8Esn01kgpVCT8P6nbZf3NU+CGQ9FBMscmoK+oimfRJAyagqqBjuCA==, tarball: https://npm-cache.luke-nittmann.workers.dev/download/@creative-int/sources/0.4.0/9a1f7225e1b99b90861b8de419d2b2741f124204}
 
   '@earendil-works/pi-agent-core@0.80.10':
     resolution: {integrity: sha512-nwnOR3SuLYGRFfyQm8ri4Nj5VGVAvAM9GuqQd3u7BUQj0d6hmD2F8w7OHAAjThE3CuySIdM+v8E22QJG6/RfCg==}
