@@ -1,0 +1,55 @@
+{
+  "declaredOmissions": {
+    "apps": "Public plugin distribution only; Webs product runtimes remain in the Webs product repo.",
+    "packages": "No reusable package workspace is owned here.",
+    "productRuntime": "No product runtime or backend state is hosted by this companion.",
+    "workspaceInfra": "No Turbo, Biome, Knip, Codecov, TESTING.md, or pnpm workspace machinery."
+  },
+  "description": "Public Webs agent-plugin companion distributing inbound MCP setup, generated client adapters, and portable memory skills.",
+  "maturity": "production",
+  "platformPosture": "tooling-only public plugin companion; no product runtime surface",
+  "profile": "agent-plugin-companion",
+  "proofPosture": {
+    "class": "deterministic",
+    "command": "pnpm verify"
+  },
+  "repoId": "webs-plugins",
+  "repoKind": "agent-plugin-companion",
+  "rootShape": {
+    "additions": [
+      ".agents",
+      ".claude-plugin",
+      ".codex-plugin",
+      ".cursor-plugin",
+      ".mcp.json",
+      "assets",
+      "clients",
+      "extensions",
+      "server.json",
+      "skills",
+      "test",
+      "tooling",
+      "webs-connect.generated.ts",
+      "webs.config.ts"
+    ],
+    "omissions": {
+      "apps": "No product app surface.",
+      "packages": "No package workspace."
+    },
+    "profile": "agent-plugin-companion",
+    "schemaVersion": 1
+  },
+  "schemaVersion": 1,
+  "surfaces": {
+    "pluginDistribution": {
+      "path": ".",
+      "present": true,
+      "required": true,
+      "runtime": "generated client adapters, MCP metadata, and portable memory skills"
+    }
+  },
+  "workspace": {
+    "packageManager": "pnpm",
+    "sourceOfTruth": "webs.config.ts and webs-connect.generated.ts"
+  }
+}
