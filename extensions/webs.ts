@@ -8,13 +8,24 @@ import type {
 } from "./types.ts";
 
 export type {
+	WebsAnswerability,
+	WebsAnswerabilityStatus,
+	WebsAskEscalation,
+	WebsAskMode,
+	WebsAskResult,
 	WebsPiExtensionFactory,
 	WebsToolArguments,
 	WebsToolName,
 	WebsTransport,
 } from "./types.ts";
 export { createWebsTransport, WebsExtensionError } from "./transport.ts";
-export { websToolContracts } from "./schemas.ts";
+export {
+	readAnswerability,
+	readAskEscalation,
+	websAnswerabilitySchema,
+	websAskResultSchema,
+	websToolContracts,
+} from "./schemas.ts";
 
 interface WebsResultDetails {
 	error?: {

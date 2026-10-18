@@ -37,7 +37,14 @@ jobs:
           WEBS_MCP_TOKEN: ""
           WEBS_API_TOKEN: ""
           WEBS_TOKEN: ""
-        run: pnpm run battery -- --out .artifacts/evals/deterministic.proof.json
+        run: pnpm run battery -- --suite journey --out .artifacts/evals/deterministic.proof.json
+      - name: Deterministic honest-abstention battery (no Webs token)
+        env:
+          WEBS_CONFIG: /tmp/webs-plugins-no-profile.json
+          WEBS_MCP_TOKEN: ""
+          WEBS_API_TOKEN: ""
+          WEBS_TOKEN: ""
+        run: pnpm run battery -- --suite abstention
       - name: Help
         run: pnpm run help
       - name: Smoke
@@ -47,7 +54,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: webs-mcp-deterministic-proof
-          path: .artifacts/evals/deterministic.proof.json
+          path: |
+            .artifacts/evals/deterministic.proof.json
+            .artifacts/evals/deterministic-abstain-*.proof.json
           if-no-files-found: error
 
   requires-token:

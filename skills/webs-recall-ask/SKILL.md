@@ -23,6 +23,8 @@ What does the user need?
 +-- Natural-language answer over saved memory -> ask.
 +-- Small task packet for the current agent run -> context.
 +-- Current public facts -> fresh search first, then optionally ask/save.
++-- ask returned answerability.status "unsupported" -> see "When memory
+    doesn't hold it": escalate once or report the gap. Never retry.
 ```
 
 ## Recall
@@ -57,6 +59,30 @@ is still relevant background.
 `space`, `webIds`, or `watchIds`; optional `task`, `why`, `citationStyle`
 (`inline`, `footnote`, or `json`), and feedback preserve intent and output
 shape.
+
+## When memory doesn't hold it
+
+`ask` can abstain honestly. When its result carries
+`answerability.status: "unsupported"`, Webs judged that the saved evidence does
+not directly support an answer: `citations` is empty, nothing was synthesized,
+and `escalation.action` offers a `fresh_then_saved` ask. That result is a
+finished answer, not an error.
+
+- Do not retry. Re-asking the same question, rephrasing it, or switching
+  between `saved_only` and `saved_memory` to fish for a cited answer turns
+  honest abstention into a loop.
+- If current public facts are in scope (prices, releases, laws, schedules,
+  provider status, news), escalate once: call `ask` with
+  `escalation.action.params` as given. Whatever that call returns is final. If
+  it is `unsupported` too, neither fresh nor saved evidence supports an answer;
+  say so.
+- Otherwise, report that saved Webs memory doesn't hold the answer. Name any
+  adjacent memory `recall` showed, and offer to research the question or save a
+  source that answers it.
+
+`supported` means the evidence directly supports the answer. `skipped` means
+the check did not run, so treat the answer as ordinary cited synthesis. An
+absent `answerability` field means the check was not active for that call.
 
 ## Fresh-search boundary
 

@@ -4,7 +4,9 @@ import { createWebsTransport } from "../extensions/webs.ts";
 import {
 	createDeterministicWebsTransport,
 	runWebsBattery,
+	WEBS_BATTERY_SUITES,
 	type WebsBatteryCaseResult,
+	type WebsBatterySuite,
 } from "./battery.ts";
 
 type BatteryMode = "deterministic" | "requires-token";
@@ -12,15 +14,25 @@ type BatteryMode = "deterministic" | "requires-token";
 const HELP = process.argv.includes("--help") || process.argv.includes("-h");
 
 if (HELP) {
-	console.log(`Usage: pnpm battery [-- --mode deterministic|requires-token] [--out PATH]
+	console.log(`Usage: pnpm battery [-- --mode deterministic|requires-token] [--suite journey|abstention|all] [--out PATH]
 
-Runs the agent-facing Webs MCP journey battery and writes canonical ProofRun JSON.
+Runs the agent-facing Webs MCP battery and writes canonical ProofRun JSON.
 
 Modes:
   deterministic   in-memory MCP contract fixture; no Webs token is required
   requires-token  live Webs MCP transport; missing credentials fail loudly
 
+Suites:
+  journey         save, recall, context, and cited ask round trip
+  abstention      honest abstention: unsupported asks return empty citations
+                  and a fresh_then_saved escalation, taken at most once
+  all             journey plus abstention (deterministic default)
+
+The requires-token default is journey. Live abstention needs Webs to return the
+optional ask answerability field; when it is absent the abstention cases fail.
+
 Options:
+  --suite NAME    case suite to run
   --out PATH      ProofRun output path (one-case battery only)
   --help          show this help text
 `);
@@ -28,6 +40,7 @@ Options:
 }
 
 const mode = readMode(process.argv.slice(2));
+const suite = readSuite(process.argv.slice(2), mode);
 const out = readOption(process.argv.slice(2), "--out");
 const transport =
 	mode === "deterministic"
@@ -36,6 +49,7 @@ const transport =
 
 try {
 	const results = await runWebsBattery({
+		cases: WEBS_BATTERY_SUITES[suite],
 		transport,
 		runIdPrefix: `webs-mcp-${mode}`,
 		transportKind:
@@ -74,6 +88,18 @@ function readMode(argv: string[]): BatteryMode {
 	if (value === "deterministic" || value === "requires-token") return value;
 	throw new Error(
 		`Unknown battery mode "${value}". Expected deterministic or requires-token.`,
+	);
+}
+
+function readSuite(argv: string[], mode: BatteryMode): WebsBatterySuite {
+	const value =
+		readOption(argv, "--suite") ??
+		(mode === "deterministic" ? "all" : "journey");
+	if (Object.hasOwn(WEBS_BATTERY_SUITES, value)) {
+		return value as WebsBatterySuite;
+	}
+	throw new Error(
+		`Unknown battery suite "${value}". Expected journey, abstention, or all.`,
 	);
 }
 

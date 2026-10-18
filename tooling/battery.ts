@@ -13,10 +13,12 @@ import {
 	type ProofRun,
 	type ProofScoreResult,
 } from "@creative-int/evals/proof";
-import type {
-	WebsToolArguments,
-	WebsToolName,
-	WebsTransport,
+import {
+	readAnswerability,
+	readAskEscalation,
+	type WebsToolArguments,
+	type WebsToolName,
+	type WebsTransport,
 } from "../extensions/webs.ts";
 
 export const WEBS_BATTERY_TOOL_SURFACE = [
@@ -38,6 +40,7 @@ export const WEBS_BATTERY_JOURNEY_ORDER = [
 ] as const satisfies readonly WebsToolName[];
 
 export interface WebsBatteryCase {
+	kind?: "journey";
 	id: string;
 	title: string;
 	sourceUrl: string;
@@ -47,6 +50,31 @@ export interface WebsBatteryCase {
 	question: string;
 	idempotencyKey: string;
 }
+
+/**
+ * Honest-abstention case: saved memory sits near the question but does not
+ * answer it. Webs must abstain (`answerability.status: "unsupported"`, empty
+ * citations, a `fresh_then_saved` escalation) instead of synthesizing.
+ */
+export interface WebsAbstentionCase {
+	kind: "abstention";
+	id: string;
+	title: string;
+	/** Near-topic source saved first, so memory is adjacent but insufficient. */
+	sourceUrl: string;
+	task: string;
+	why: string;
+	question: string;
+	idempotencyKey: string;
+	/**
+	 * Current public facts are in scope: the right move is exactly one
+	 * `fresh_then_saved` escalation. Otherwise the right move is to report that
+	 * memory doesn't hold it, with no further ask.
+	 */
+	freshFactsInScope: boolean;
+}
+
+export type WebsBatterySuiteCase = WebsBatteryCase | WebsAbstentionCase;
 
 export const DEFAULT_WEBS_BATTERY_CASES = [
 	{
@@ -60,6 +88,42 @@ export const DEFAULT_WEBS_BATTERY_CASES = [
 		idempotencyKey: "webs-plugins-agent-memory-roundtrip-v1",
 	},
 ] as const satisfies readonly WebsBatteryCase[];
+
+export const DEFAULT_WEBS_ABSTENTION_CASES = [
+	{
+		kind: "abstention",
+		id: "abstain-near-topic-unsupported",
+		title:
+			"Webs abstains when saved memory is near the topic but does not answer the question",
+		sourceUrl: "https://github.com/creative-int/webs-plugins",
+		task: "Verify Webs abstains honestly over near-topic saved memory",
+		why: "Adjacent memory must not become a confident cited answer",
+		question:
+			"Which reviewer approved shipping four skills in the Webs agent companion, and on what date?",
+		idempotencyKey: "webs-plugins-abstain-near-topic-v1",
+		freshFactsInScope: false,
+	},
+	{
+		kind: "abstention",
+		id: "abstain-current-public-facts",
+		title:
+			"Webs abstains on current public facts and the agent escalates once to fresh_then_saved",
+		sourceUrl: "https://github.com/creative-int/webs-plugins",
+		task: "Verify the escalate-once rule for current public facts",
+		why: "Saved memory is not proof of a current price; fresh evidence is one escalation away",
+		question: "What does a Webs subscription cost per month today?",
+		idempotencyKey: "webs-plugins-abstain-current-facts-v1",
+		freshFactsInScope: true,
+	},
+] as const satisfies readonly WebsAbstentionCase[];
+
+export const WEBS_BATTERY_SUITES = {
+	journey: DEFAULT_WEBS_BATTERY_CASES,
+	abstention: DEFAULT_WEBS_ABSTENTION_CASES,
+	all: [...DEFAULT_WEBS_BATTERY_CASES, ...DEFAULT_WEBS_ABSTENTION_CASES],
+} as const satisfies Record<string, readonly WebsBatterySuiteCase[]>;
+
+export type WebsBatterySuite = keyof typeof WEBS_BATTERY_SUITES;
 
 type BatteryStep = JourneyStep<WebsToolName, WebsToolArguments>;
 
@@ -84,25 +148,29 @@ interface BatteryState {
 	savedWebId?: string;
 }
 
+type BatteryRun = JourneyRunResult<
+	BatteryStep,
+	BatteryObservation,
+	BatteryState
+>;
+
 export interface WebsBatteryCaseResult {
 	caseId: string;
-	gate: JourneyRunResult<BatteryStep, BatteryObservation, BatteryState>["gate"];
+	gate: BatteryRun["gate"];
 	pass: boolean;
 	proof: ProofRun;
 	score: ProofScoreResult;
-	trace: JourneyRunResult<
-		BatteryStep,
-		BatteryObservation,
-		BatteryState
-	>["trace"];
+	trace: BatteryRun["trace"];
 }
 
 export interface RunWebsBatteryOptions {
-	cases?: readonly WebsBatteryCase[];
+	cases?: readonly WebsBatterySuiteCase[];
 	runIdPrefix?: string;
 	transport: WebsTransport;
 	transportKind?: "custom-webs-transport" | "deterministic-mcp-fixture" | "live-mcp";
 }
+
+type TransportKind = NonNullable<RunWebsBatteryOptions["transportKind"]>;
 
 export async function runWebsBattery(
 	options: RunWebsBatteryOptions,
@@ -129,12 +197,21 @@ export async function runWebsBattery(
 
 	const results: WebsBatteryCaseResult[] = [];
 	for (const batteryCase of cases) {
-		const run = await runBatteryCase(
-			batteryCase,
-			options.transport,
-			options.runIdPrefix ?? "webs-mcp-battery",
-			options.transportKind ?? "custom-webs-transport",
-		);
+		const runIdPrefix = options.runIdPrefix ?? "webs-mcp-battery";
+		const transportKind = options.transportKind ?? "custom-webs-transport";
+		const run = isAbstentionCase(batteryCase)
+			? await runAbstentionCase(
+					batteryCase,
+					options.transport,
+					runIdPrefix,
+					transportKind,
+				)
+			: await runBatteryCase(
+					batteryCase,
+					options.transport,
+					runIdPrefix,
+					transportKind,
+				);
 		const proof = parseProofRun(run.proof);
 		const score = scoreProofRun(proof);
 		results.push({
@@ -152,12 +229,18 @@ export async function runWebsBattery(
 	return results;
 }
 
+export function isAbstentionCase(
+	batteryCase: WebsBatterySuiteCase,
+): batteryCase is WebsAbstentionCase {
+	return batteryCase.kind === "abstention";
+}
+
 async function runBatteryCase(
 	batteryCase: WebsBatteryCase,
 	transport: WebsTransport,
 	runIdPrefix: string,
-	transportKind: NonNullable<RunWebsBatteryOptions["transportKind"]>,
-): Promise<JourneyRunResult<BatteryStep, BatteryObservation, BatteryState>> {
+	transportKind: TransportKind,
+): Promise<BatteryRun> {
 	const requiredAssertions = [
 		"battery.surface.exact-seven",
 		"battery.journey.tool-order",
@@ -279,6 +362,151 @@ async function runBatteryCase(
 	});
 }
 
+/**
+ * Honest-abstention journey: readiness, save near-topic memory, ask
+ * `saved_only`, then either stop (report that memory doesn't hold it) or take
+ * Webs' one-tap `fresh_then_saved` escalation exactly once. It never retries
+ * the saved ask.
+ */
+async function runAbstentionCase(
+	batteryCase: WebsAbstentionCase,
+	transport: WebsTransport,
+	runIdPrefix: string,
+	transportKind: TransportKind,
+): Promise<BatteryRun> {
+	const requiredAssertions = [
+		"battery.surface.exact-seven",
+		"battery.journey.tool-order",
+		"battery.save.agent-intent",
+		"battery.abstain.answerability-unsupported",
+		"battery.abstain.no-citations",
+		"battery.abstain.no-synthesis",
+		"battery.abstain.escalation-offered",
+		batteryCase.freshFactsInScope
+			? "battery.abstain.escalate-once"
+			: "battery.abstain.report-missing",
+	];
+	const steps: BatteryStep[] = [
+		{ id: "readiness", operation: "readiness", input: {} },
+		{
+			id: "save",
+			operation: "save",
+			input: {
+				urls: [batteryCase.sourceUrl],
+				task: batteryCase.task,
+				why: batteryCase.why,
+				idempotencyKey: batteryCase.idempotencyKey,
+				via: "mcp",
+			},
+		},
+		{
+			id: "ask",
+			operation: "ask",
+			input: {
+				question: batteryCase.question,
+				mode: "saved_only",
+				task: batteryCase.task,
+				why: batteryCase.why,
+				citationStyle: "json",
+			},
+		},
+	];
+	if (batteryCase.freshFactsInScope) {
+		// Arguments come from the saved ask's escalation at run time.
+		steps.push({ id: "escalate", operation: "ask", input: {} });
+	}
+
+	const scenario: JourneyScenario<
+		BatteryStep,
+		undefined,
+		undefined,
+		BatteryObservation,
+		BatteryState
+	> = {
+		id: batteryCase.id,
+		title: batteryCase.title,
+		tags: ["mcp", "agent-facing", "proof-run", "fail-closed", "abstention"],
+		steps,
+		policy: {
+			execution: "fail-fast",
+			defaultStepTimeoutMs: 30_000,
+			gate: {
+				minimumScore: 1,
+				requiredAssertions,
+			},
+		},
+		scorers: [
+			{
+				id: "honest-abstention-contract",
+				scope: "journey",
+				score: ({ finalState }) =>
+					scoreAbstentionContract(finalState, batteryCase),
+			},
+		],
+		proof: {
+			repo: "creative-int/webs-plugins",
+			packageVersions: { "@creative-int/evals": "1.8.0" },
+			userGoal:
+				"Prove Webs abstains honestly when saved memory does not hold the answer, and the agent escalates at most once.",
+			agentRoute: "source-ingest",
+			allowedTools: [...WEBS_BATTERY_TOOL_SURFACE],
+			proofClass: "deterministic-proof",
+			metadata: {
+				batteryCaseId: batteryCase.id,
+				batteryCaseKind: "abstention",
+				freshFactsInScope: batteryCase.freshFactsInScope,
+				transport: transportKind,
+			},
+		},
+	};
+
+	const adapter: JourneyAdapter<
+		BatteryContext,
+		BatteryStep,
+		BatteryObservation,
+		BatteryState
+	> = {
+		createContext: () => ({ calls: [] }),
+		async execute({ context, step, signal }) {
+			const args =
+				step.id === "escalate"
+					? escalationArgs(context)
+					: argsForStep(step, context.savedWebId);
+			const result = await transport.callTool(step.operation, args, signal);
+			context.calls.push({ args, result, tool: step.operation });
+			if (step.operation === "save") {
+				context.savedWebId = extractSavedWebId(result);
+			}
+			return {
+				observation: { result, tool: step.operation },
+				state: snapshotContext(context),
+				artifacts: [stepProofArtifact(batteryCase.id, step, result)],
+			};
+		},
+		snapshotState: (context) => snapshotContext(context),
+	};
+
+	return runJourney({
+		scenario,
+		adapter,
+		runtime: {
+			idFactory: () => `${runIdPrefix}-${batteryCase.id}`,
+		},
+	});
+}
+
+/** The one-tap escalation, passed exactly as Webs returned it. */
+function escalationArgs(context: BatteryContext): WebsToolArguments {
+	const savedAsk = context.calls.find((call) => call.tool === "ask");
+	const escalation = readAskEscalation(savedAsk?.result);
+	if (!escalation) {
+		throw new Error(
+			"Webs offered no fresh_then_saved escalation after the saved ask; there is nothing to escalate once.",
+		);
+	}
+	return structuredClone(escalation.action.params) as WebsToolArguments;
+}
+
 function argsForStep(
 	step: BatteryStep,
 	savedWebId: string | undefined,
@@ -353,6 +581,103 @@ function scoreAgentMemoryContract(
 	];
 }
 
+function scoreAbstentionContract(
+	state: BatteryState | undefined,
+	batteryCase: WebsAbstentionCase,
+): ProofAssertion[] {
+	const calls = state?.calls ?? [];
+	const readiness = calls.find((call) => call.tool === "readiness");
+	const save = calls.find((call) => call.tool === "save");
+	const asks = calls.filter((call) => call.tool === "ask");
+	const savedAsk = asks[0];
+	const escalation = readAskEscalation(savedAsk?.result);
+	const expectedOrder: WebsToolName[] = batteryCase.freshFactsInScope
+		? ["readiness", "save", "ask", "ask"]
+		: ["readiness", "save", "ask"];
+
+	const finalAssertion = batteryCase.freshFactsInScope
+		? assertion(
+				"battery.abstain.escalate-once",
+				asks.length === 2 &&
+					asks[1]?.args.mode === "fresh_then_saved" &&
+					asks[1].args.question === batteryCase.question &&
+					isHonestAskResult(asks[1].result),
+				"Current public facts are in scope, so the agent takes the fresh_then_saved escalation exactly once and accepts its honest result.",
+			)
+		: assertion(
+				"battery.abstain.report-missing",
+				asks.length === 1,
+				"Current public facts are not in scope, so the agent reports that memory doesn't hold it and does not ask again.",
+			);
+
+	return [
+		assertion(
+			"battery.surface.exact-seven",
+			hasExactToolSurface(readiness?.result),
+			"Readiness reports the exact seven-tool Webs MCP surface.",
+		),
+		assertion(
+			"battery.journey.tool-order",
+			sameValues(
+				calls.map((call) => call.tool),
+				expectedOrder,
+			),
+			`The abstention journey executes ${expectedOrder.join(", ")}.`,
+		),
+		assertion(
+			"battery.save.agent-intent",
+			save?.args.task === batteryCase.task &&
+				save.args.why === batteryCase.why &&
+				save.args.idempotencyKey === batteryCase.idempotencyKey,
+			"Save carries task, why, and idempotencyKey.",
+		),
+		assertion(
+			"battery.abstain.answerability-unsupported",
+			savedAsk?.args.mode === "saved_only" &&
+				readAnswerability(savedAsk.result)?.status === "unsupported",
+			"The saved ask reports answerability.status 'unsupported'; an absent field means the Webs answerability gate is off.",
+		),
+		assertion(
+			"battery.abstain.no-citations",
+			citationList(savedAsk?.result)?.length === 0,
+			"The abstaining ask returns citations: [].",
+		),
+		assertion(
+			"battery.abstain.no-synthesis",
+			isAbstainingAnswer(savedAsk?.result),
+			"The abstaining ask states the gap in plain text, with no cited synthesis.",
+		),
+		assertion(
+			"battery.abstain.escalation-offered",
+			escalation?.action.params.question === batteryCase.question,
+			"The abstaining ask offers a one-tap fresh_then_saved escalation for the same question.",
+		),
+		finalAssertion,
+	];
+}
+
+function citationList(value: unknown): unknown[] | undefined {
+	if (!isRecord(value) || !Array.isArray(value.citations)) return undefined;
+	return value.citations;
+}
+
+function isAbstainingAnswer(value: unknown): boolean {
+	if (!isRecord(value) || typeof value.answer !== "string") return false;
+	const answer = value.answer.trim();
+	return answer.length > 0 && !/\[\d+\]/.test(answer);
+}
+
+/** An unsupported verdict never carries citations; any other verdict may. */
+function isHonestAskResult(value: unknown): boolean {
+	const citations = citationList(value);
+	if (!isRecord(value) || typeof value.answer !== "string" || !citations) {
+		return false;
+	}
+	return readAnswerability(value)?.status === "unsupported"
+		? citations.length === 0
+		: true;
+}
+
 function assertion(
 	name: string,
 	pass: boolean,
@@ -378,6 +703,8 @@ function stepProofArtifact(
 			: citationCount > 0
 				? "citation"
 				: "test-result";
+	const answerability =
+		step.operation === "ask" ? readAnswerability(result) : undefined;
 	return {
 		id: `${caseId}-${step.id}`,
 		kind,
@@ -386,6 +713,7 @@ function stepProofArtifact(
 			tool: step.operation,
 			citationCount,
 			containsSavedWebId: Boolean(extractSavedWebId(result)),
+			...(answerability ? { answerability: answerability.status } : {}),
 		},
 	};
 }
@@ -502,14 +830,40 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-export function createDeterministicWebsTransport(): WebsTransport {
+/** Verdict label the fixture reports, matching the Webs answerability seam. */
+export const FIXTURE_ANSWERABILITY_SEAM = "jev-1.13.0";
+
+const FIXTURE_FRESH_URL = "https://fresh-evidence.fixture.invalid/current-facts";
+
+export interface DeterministicWebsTransportOptions {
+	/**
+	 * Mirror Webs' answerability gate. `on` (default) returns the optional
+	 * `answerability` field and abstains on unsupported questions. `off`
+	 * reproduces the ungated path, where near-topic memory becomes a cited
+	 * answer, so abstention cases fail closed against it.
+	 */
+	answerability?: "on" | "off";
+	/** Questions saved memory cannot answer. Defaults to the abstention cases. */
+	unsupportedQuestions?: readonly string[];
+}
+
+export function createDeterministicWebsTransport(
+	options: DeterministicWebsTransportOptions = {},
+): WebsTransport {
+	const gateOn = (options.answerability ?? "on") === "on";
+	const unsupportedQuestions = new Set(
+		(
+			options.unsupportedQuestions ??
+			DEFAULT_WEBS_ABSTENTION_CASES.map((batteryCase) => batteryCase.question)
+		).map((question) => question.trim()),
+	);
 	let saved:
 		| {
 				id: string;
 				task: string;
 				url: string;
 				why: string;
-		  }
+			}
 		| undefined;
 
 	return {
@@ -583,14 +937,93 @@ export function createDeterministicWebsTransport(): WebsTransport {
 						],
 						budget: { used: 1, limit: 4 },
 					};
-				case "ask":
+				case "ask": {
 					if (!saved) throw new Error("Ask ran before save.");
-					return {
-						answer: "The public webs-plugins repository documents the companion.",
-						citations: [{ url: saved.url, webId: saved.id }],
+					const question =
+						typeof args.question === "string" ? args.question.trim() : "";
+					const mode = args.mode;
+					if (!unsupportedQuestions.has(question)) {
+						return {
+							answer:
+								"The public webs-plugins repository documents the companion.",
+							citations: [{ url: saved.url, webId: saved.id }],
+							...(gateOn
+								? {
+										answerability: {
+											status: "supported",
+											confidence: 0.93,
+											seam: FIXTURE_ANSWERABILITY_SEAM,
+										},
+									}
+								: {}),
+						};
+					}
+					const escalation = {
+						action: {
+							tool: "ask",
+							params: {
+								mode: "fresh_then_saved",
+								question,
+								...(isRecord(args.scope) ? { scope: args.scope } : {}),
+							},
+						},
 					};
+					if (mode === "fresh_then_saved") {
+						return {
+							answer: "Fresh public evidence answers the question [1].",
+							citations: [
+								{ url: FIXTURE_FRESH_URL, title: "Fresh fixture evidence" },
+							],
+							mode,
+							usedFreshUrls: [FIXTURE_FRESH_URL],
+							...(gateOn
+								? {
+										answerability: {
+											status: "supported",
+											confidence: 0.9,
+											seam: FIXTURE_ANSWERABILITY_SEAM,
+										},
+									}
+								: {}),
+						};
+					}
+					if (!gateOn) {
+						// The ungated path: adjacent memory becomes a cited answer.
+						return {
+							answer:
+								"The public webs-plugins repository covers the Webs agent companion [1].",
+							citations: [{ url: saved.url, webId: saved.id }],
+							confidence: 0.62,
+							mode,
+							escalation: {
+								reason: "weak_saved_result",
+								threshold: 0.8,
+								confidence: 0.62,
+								...escalation,
+							},
+						};
+					}
+					return {
+						answer:
+							"Saved Webs memory does not directly support an answer to that question.",
+						citations: [],
+						confidence: 0,
+						mode,
+						summary: "Saved memory did not contain enough evidence.",
+						answerability: {
+							status: "unsupported",
+							confidence: 0.9,
+							seam: FIXTURE_ANSWERABILITY_SEAM,
+						},
+						escalation: {
+							reason: "answerability_unsupported",
+							confidence: 0,
+							...escalation,
+						},
+					};
+				}
 				case "watch":
-				return { monitors: [] };
+					return { monitors: [] };
 				case "run":
 					return { runId: "run_fixture", status: "completed" };
 			}

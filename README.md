@@ -170,7 +170,7 @@ npx skills add creative-int/webs-plugins --list
 | OAuth | Runs through the client and Webs. The intended scope request is `read search fetch save recall context ask watch run`; credentials never belong in this repository. |
 | `readiness` | Proves auth, entitlement, granted scopes, and tool availability. It is a tool protected by `read`, not an OAuth scope. |
 | `context` | Returns a small task-affinity packet only when the agent explicitly requests one. No hooks or automatic injection are included. |
-| `recall` / `ask` | `recall` returns inspectable memory results; `ask` returns a cited answer over memory. |
+| `recall` / `ask` | `recall` returns inspectable memory results; `ask` returns a cited answer over memory, or abstains with empty citations and a one-tap `fresh_then_saved` escalation when memory doesn't hold the answer. |
 | `save` | Saves one to eight source URLs. Agent calls require `task` and `why`; content and selection inputs are not supported. |
 
 ## MCP surface
@@ -203,8 +203,9 @@ pnpm generate
 pnpm verify
 ```
 
-`pnpm smoke` validates generated manifests and skill frontmatter. It does not
-require a bearer token.
+`pnpm smoke` validates generated manifests and skill frontmatter. `pnpm battery`
+runs the deterministic MCP battery: the memory journey plus honest-abstention
+cases. Neither requires a bearer token.
 
 ## License
 

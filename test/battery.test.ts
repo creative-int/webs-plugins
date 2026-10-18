@@ -5,12 +5,19 @@ import {
 	parseProofRun,
 	PROOF_ARTIFACT_VERSION,
 	scoreProofRun,
+	type ProofRun,
 } from "@creative-int/evals/proof";
-import { createWebsTransport, type WebsTransport } from "../extensions/webs.ts";
+import {
+	createWebsTransport,
+	type WebsToolArguments,
+	type WebsTransport,
+} from "../extensions/webs.ts";
 import {
 	createDeterministicWebsTransport,
+	DEFAULT_WEBS_ABSTENTION_CASES,
 	runWebsBattery,
 	WEBS_BATTERY_JOURNEY_ORDER,
+	WEBS_BATTERY_SUITES,
 } from "../tooling/battery.ts";
 
 test("emits a passing canonical ProofRun for the deterministic MCP journey", async () => {
@@ -156,3 +163,187 @@ test("missing live credentials fail the first readiness step", async () => {
 		/No Webs MCP token was found/,
 	);
 });
+
+test("abstention cases pass against a mocked unsupported ask", async () => {
+	const results = await runWebsBattery({
+		cases: DEFAULT_WEBS_ABSTENTION_CASES,
+		transport: createDeterministicWebsTransport(),
+		runIdPrefix: "test-abstention",
+		transportKind: "deterministic-mcp-fixture",
+	});
+
+	assert.deepEqual(
+		results.map((result) => result.caseId),
+		["abstain-near-topic-unsupported", "abstain-current-public-facts"],
+	);
+	for (const result of results) {
+		assert.equal(result.pass, true, result.caseId);
+		assert.equal(result.gate.pass, true);
+		assert.equal(result.score.score, 1);
+		assert.deepEqual(result.score.blockers, []);
+		const proof = parseProofRun(JSON.parse(JSON.stringify(result.proof)));
+		assert.deepEqual(proof, result.proof);
+		assert.equal(proof.metadata?.batteryCaseKind, "abstention");
+		const savedAsk = proof.evidence.artifacts.find(
+			(artifact) => artifact.id === `${result.caseId}-ask`,
+		);
+		assert.equal(savedAsk?.kind, "test-result");
+		assert.equal(savedAsk?.metadata?.citationCount, 0);
+		assert.equal(savedAsk?.metadata?.answerability, "unsupported");
+	}
+
+	const [nearTopic, currentFacts] = results;
+	assert.deepEqual(
+		nearTopic?.trace.observations.map((observation) => observation.stepId),
+		["readiness", "save", "ask"],
+	);
+	assert.deepEqual(
+		currentFacts?.trace.observations.map((observation) => observation.stepId),
+		["readiness", "save", "ask", "escalate"],
+	);
+});
+
+test("abstention cases escalate once with the one-tap params and never retry", async () => {
+	const asks: WebsToolArguments[] = [];
+	const fixture = createDeterministicWebsTransport();
+	const transport: WebsTransport = {
+		async callTool(name, args, signal) {
+			if (name === "ask") asks.push(structuredClone(args));
+			return fixture.callTool(name, args, signal);
+		},
+	};
+	const results = await runWebsBattery({
+		cases: DEFAULT_WEBS_ABSTENTION_CASES,
+		transport,
+	});
+
+	assert.ok(results.every((result) => result.pass));
+	const nearTopic = DEFAULT_WEBS_ABSTENTION_CASES[0];
+	const currentFacts = DEFAULT_WEBS_ABSTENTION_CASES[1];
+	assert.deepEqual(
+		asks.map((args) => [args.question, args.mode]),
+		[
+			[nearTopic.question, "saved_only"],
+			[currentFacts.question, "saved_only"],
+			[currentFacts.question, "fresh_then_saved"],
+		],
+	);
+	assert.deepEqual(asks[2], {
+		mode: "fresh_then_saved",
+		question: currentFacts.question,
+		scope: { webIds: ["web_fixture_agent_memory"] },
+	});
+});
+
+test("journey and abstention suites pass together without regressing the journey", async () => {
+	const results = await runWebsBattery({
+		cases: WEBS_BATTERY_SUITES.all,
+		transport: createDeterministicWebsTransport(),
+	});
+
+	assert.equal(results.length, 3);
+	assert.ok(results.every((result) => result.pass));
+	const [journey] = results;
+	assert.equal(journey?.caseId, "agent-memory-roundtrip");
+	assert.equal(journey?.proof.evidence.artifacts.length, 5);
+	assert.equal(
+		journey?.proof.evidence.artifacts.filter(
+			(artifact) => artifact.kind === "citation",
+		).length,
+		3,
+	);
+});
+
+test("the journey still passes when Webs omits answerability", async () => {
+	const [journey] = await runWebsBattery({
+		transport: createDeterministicWebsTransport({ answerability: "off" }),
+	});
+
+	assert.ok(journey);
+	assert.equal(journey.pass, true);
+});
+
+test("an ungated Webs that synthesizes over near-topic memory fails the abstention battery", async () => {
+	const results = await runWebsBattery({
+		cases: DEFAULT_WEBS_ABSTENTION_CASES,
+		transport: createDeterministicWebsTransport({ answerability: "off" }),
+	});
+
+	for (const result of results) {
+		assert.equal(result.pass, false, result.caseId);
+		assert.equal(result.gate.pass, false);
+		assert.deepEqual(failedAssertions(result.proof), [
+			"battery.abstain.answerability-unsupported",
+			"battery.abstain.no-citations",
+			"battery.abstain.no-synthesis",
+		]);
+	}
+});
+
+test("an unsupported verdict that still carries citations fails closed", async () => {
+	const fixture = createDeterministicWebsTransport();
+	const transport: WebsTransport = {
+		async callTool(name, args, signal) {
+			const result = await fixture.callTool(name, args, signal);
+			if (name !== "ask" || args.mode !== "saved_only") return result;
+			return {
+				...(result as Record<string, unknown>),
+				answer: "Near-topic memory suggests an answer [1].",
+				citations: [{ url: "https://github.com/creative-int/webs-plugins" }],
+			};
+		},
+	};
+	const [nearTopic] = await runWebsBattery({
+		cases: [DEFAULT_WEBS_ABSTENTION_CASES[0]],
+		transport,
+	});
+
+	assert.ok(nearTopic);
+	assert.equal(nearTopic.pass, false);
+	assert.deepEqual(failedAssertions(nearTopic.proof), [
+		"battery.abstain.no-citations",
+		"battery.abstain.no-synthesis",
+	]);
+});
+
+test("a missing escalation fails closed instead of retrying the saved ask", async () => {
+	const asks: WebsToolArguments[] = [];
+	const fixture = createDeterministicWebsTransport();
+	const transport: WebsTransport = {
+		async callTool(name, args, signal) {
+			const result = await fixture.callTool(name, args, signal);
+			if (name !== "ask") return result;
+			asks.push(args);
+			const { escalation: _escalation, ...rest } = result as Record<
+				string,
+				unknown
+			>;
+			return rest;
+		},
+	};
+	const [nearTopic, currentFacts] = await runWebsBattery({
+		cases: DEFAULT_WEBS_ABSTENTION_CASES,
+		transport,
+	});
+
+	assert.ok(nearTopic && currentFacts);
+	assert.deepEqual(failedAssertions(nearTopic.proof), [
+		"battery.abstain.escalation-offered",
+	]);
+	assert.equal(currentFacts.pass, false);
+	assert.equal(currentFacts.trace.status, "failed");
+	assert.match(
+		currentFacts.trace.observations.at(-1)?.error?.message ?? "",
+		/no fresh_then_saved escalation/,
+	);
+	assert.deepEqual(
+		asks.map((args) => args.mode),
+		["saved_only", "saved_only"],
+	);
+});
+
+function failedAssertions(proof: ProofRun): string[] {
+	return proof.eval.assertions
+		.filter((assertion) => assertion.status === "fail")
+		.map((assertion) => assertion.name);
+}

@@ -1,5 +1,10 @@
 import { Type, type TSchema, type TUnsafe } from "typebox";
-import type { WebsToolArguments, WebsToolName } from "./types.ts";
+import type {
+	WebsAnswerability,
+	WebsAskEscalation,
+	WebsToolArguments,
+	WebsToolName,
+} from "./types.ts";
 
 export interface WebsToolContract {
 	description: string;
@@ -25,6 +30,126 @@ const feedbackSchema = {
 	description:
 		"Optional result feedback action. Use action='flag' with reason='not_useful' to record a saved battery case.",
 } as const;
+
+/**
+ * Optional `answerability` field on the Webs `ask` result. It is absent when
+ * Webs' answerability gate is off for the call.
+ */
+export const websAnswerabilitySchema = {
+	type: "object",
+	properties: {
+		status: {
+			type: "string",
+			enum: ["supported", "unsupported", "skipped"],
+			description:
+				"supported: saved evidence directly supports the answer. unsupported: honest abstention with empty citations and a fresh_then_saved escalation. skipped: the gate did not run.",
+		},
+		confidence: { type: "number", minimum: 0, maximum: 1 },
+		seam: {
+			type: "string",
+			description: "Judge and version that produced the verdict.",
+		},
+	},
+	required: ["status", "seam"],
+} as const;
+
+const askEscalationSchema = {
+	type: "object",
+	properties: {
+		reason: { type: "string" },
+		threshold: { type: "number" },
+		confidence: { type: "number" },
+		action: {
+			type: "object",
+			properties: {
+				tool: { type: "string", enum: ["ask"] },
+				params: {
+					type: "object",
+					properties: {
+						mode: { type: "string", enum: ["fresh_then_saved"] },
+						question: { type: "string" },
+						scope: { type: "object", additionalProperties: true },
+					},
+					required: ["mode", "question"],
+					additionalProperties: true,
+				},
+			},
+			required: ["tool", "params"],
+		},
+	},
+	required: ["action"],
+	additionalProperties: true,
+} as const;
+
+/**
+ * The `ask` result fields this plugin reads. Webs owns the full result and
+ * returns more fields; they pass through untouched.
+ */
+export const websAskResultSchema = {
+	type: "object",
+	properties: {
+		answer: { type: "string" },
+		citations: { type: "array" },
+		confidence: { type: "number" },
+		escalation: askEscalationSchema,
+		answerability: websAnswerabilitySchema,
+	},
+	required: ["answer", "citations"],
+	additionalProperties: true,
+} as const;
+
+/** Read a well-formed `answerability` from an `ask` result, if present. */
+export function readAnswerability(
+	result: unknown,
+): WebsAnswerability | undefined {
+	if (!isRecord(result) || !isRecord(result.answerability)) return undefined;
+	const { confidence, seam, status } = result.answerability;
+	if (
+		status !== "supported" &&
+		status !== "unsupported" &&
+		status !== "skipped"
+	) {
+		return undefined;
+	}
+	if (typeof seam !== "string" || !seam.trim()) return undefined;
+	if (
+		confidence !== undefined &&
+		(typeof confidence !== "number" ||
+			!Number.isFinite(confidence) ||
+			confidence < 0 ||
+			confidence > 1)
+	) {
+		return undefined;
+	}
+	return {
+		status,
+		seam,
+		...(confidence === undefined ? {} : { confidence }),
+	};
+}
+
+/** Read the one-tap `fresh_then_saved` escalation from an `ask` result. */
+export function readAskEscalation(
+	result: unknown,
+): WebsAskEscalation | undefined {
+	if (!isRecord(result) || !isRecord(result.escalation)) return undefined;
+	const { action } = result.escalation;
+	if (!isRecord(action) || action.tool !== "ask" || !isRecord(action.params)) {
+		return undefined;
+	}
+	if (
+		action.params.mode !== "fresh_then_saved" ||
+		typeof action.params.question !== "string" ||
+		!action.params.question.trim()
+	) {
+		return undefined;
+	}
+	return result.escalation as unknown as WebsAskEscalation;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
 
 /** Exact public mirror of the production Webs v1Tools contract. */
 export const websToolContracts: readonly WebsToolContract[] = [
@@ -176,7 +301,7 @@ export const websToolContracts: readonly WebsToolContract[] = [
 		name: "ask",
 		label: "Webs: Ask",
 		description:
-			"Answer a question using saved Webs memory, optional fresh fetch/search, and returned citations. Modes: saved_only uses already-saved web analysis; saved_memory uses semantic memory + agent recall; fresh_then_saved fetches fresh content first then falls back to saved memory.",
+			"Answer a question using saved Webs memory, optional fresh fetch/search, and returned citations. Modes: saved_only uses already-saved web analysis; saved_memory uses semantic memory + agent recall; fresh_then_saved fetches fresh content first then falls back to saved memory. When saved memory does not directly support an answer, Webs may abstain honestly (answerability.status 'unsupported', empty citations, and a fresh_then_saved escalation to take at most once) instead of synthesizing one.",
 		parameters: schema({
 			type: "object",
 			properties: {

@@ -80,3 +80,8 @@ clear task and why.
 When Webs memory shaped your answer, cite the memory result or say what was
 missing. Treat missing memory as useful evidence, not failure: say that saved
 memory did not cover the question, then use the appropriate fresh evidence loop.
+
+When `ask` abstains (`answerability.status: "unsupported"`, empty citations),
+follow `webs-recall-ask` "When memory doesn't hold it": escalate once to
+`fresh_then_saved` when current public facts are in scope, otherwise report
+that memory doesn't hold it. Never retry `ask` to get a different verdict.

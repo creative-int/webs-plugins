@@ -6,7 +6,12 @@ import test from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import createWebsPiExtension, {
 	createWebsTransport,
+	readAnswerability,
+	readAskEscalation,
+	websAnswerabilitySchema,
+	websAskResultSchema,
 	websToolContracts,
+	type WebsAskResult,
 	type WebsToolArguments,
 	type WebsToolName,
 	type WebsTransport,
@@ -439,6 +444,127 @@ test("classifies abort and network failures without exposing causes", async () =
 	assert.equal(errorKind(networkResult), "network");
 	assert.match(networkResult.content[0]?.text ?? "", /Unable to reach/);
 	assert.doesNotMatch(JSON.stringify(networkResult), /network-secret/);
+});
+
+test("ask contract mirrors the optional answerability field and names abstention once", () => {
+	const ask = websToolContracts.find((contract) => contract.name === "ask");
+	assert.ok(ask);
+	const abstention = ask.description
+		.split(/(?<=\.)\s+/)
+		.filter((sentence) => /abstain/i.test(sentence));
+	assert.equal(abstention.length, 1);
+	assert.match(abstention[0] ?? "", /unsupported/);
+	assert.match(abstention[0] ?? "", /fresh_then_saved/);
+	assert.match(abstention[0] ?? "", /at most once/);
+
+	assert.deepEqual(websAnswerabilitySchema.properties.status.enum, [
+		"supported",
+		"unsupported",
+		"skipped",
+	]);
+	assert.deepEqual(websAnswerabilitySchema.required, ["status", "seam"]);
+	assert.equal(
+		websAskResultSchema.properties.answerability,
+		websAnswerabilitySchema,
+	);
+	assert.deepEqual(websAskResultSchema.required, ["answer", "citations"]);
+	assert.equal(websAskResultSchema.additionalProperties, true);
+});
+
+test("reads answerability and the one-tap escalation from an ask result", () => {
+	const result: WebsAskResult = {
+		answer: "Saved Webs memory does not directly support an answer.",
+		citations: [],
+		answerability: { status: "unsupported", confidence: 0.9, seam: "jev-1.13.0" },
+		escalation: {
+			reason: "answerability_unsupported",
+			action: {
+				tool: "ask",
+				params: {
+					mode: "fresh_then_saved",
+					question: "What changed today?",
+					scope: { webIds: ["web_1"] },
+				},
+			},
+		},
+	};
+
+	assert.deepEqual(readAnswerability(result), {
+		status: "unsupported",
+		confidence: 0.9,
+		seam: "jev-1.13.0",
+	});
+	assert.deepEqual(readAskEscalation(result)?.action.params, {
+		mode: "fresh_then_saved",
+		question: "What changed today?",
+		scope: { webIds: ["web_1"] },
+	});
+	assert.deepEqual(
+		readAnswerability({ answer: "", answerability: { status: "skipped", seam: "jev" } }),
+		{ status: "skipped", seam: "jev" },
+	);
+
+	// Absent when the Webs gate is off; malformed verdicts are never trusted.
+	assert.equal(readAnswerability({ answer: "", citations: [] }), undefined);
+	for (const answerability of [
+		{ status: "maybe", seam: "jev-1.13.0" },
+		{ status: "supported" },
+		{ status: "supported", seam: " " },
+		{ status: "supported", seam: "jev-1.13.0", confidence: 1.5 },
+		{ status: "supported", seam: "jev-1.13.0", confidence: "high" },
+		["unsupported"],
+	]) {
+		assert.equal(readAnswerability({ answerability }), undefined);
+	}
+	assert.equal(
+		readAskEscalation({
+			escalation: {
+				action: { tool: "ask", params: { mode: "saved_only", question: "x" } },
+			},
+		}),
+		undefined,
+	);
+	assert.equal(
+		readAskEscalation({
+			escalation: {
+				action: { tool: "run", params: { mode: "fresh_then_saved", question: "x" } },
+			},
+		}),
+		undefined,
+	);
+	assert.equal(readAskEscalation({ answer: "no escalation" }), undefined);
+});
+
+test("passes an abstaining ask result to the agent unchanged", async () => {
+	const abstention = {
+		answer: "Saved Webs memory does not directly support an answer.",
+		citations: [],
+		answerability: { status: "unsupported", confidence: 0.9, seam: "jev-1.13.0" },
+		escalation: {
+			action: {
+				tool: "ask",
+				params: { mode: "fresh_then_saved", question: "What changed today?" },
+			},
+		},
+	};
+	const transport: WebsTransport = {
+		async callTool() {
+			return abstention;
+		},
+	};
+	const result = await tool(register(transport).tools, "ask").execute(
+		"call_abstain",
+		{ mode: "saved_only", question: "What changed today?" },
+	);
+
+	assert.equal(result.isError, undefined);
+	assert.deepEqual(result.details, {
+		ok: true,
+		result: abstention,
+		tool: "ask",
+	});
+	assert.match(result.content[0]?.text ?? "", /"status": "unsupported"/);
+	assert.match(result.content[0]?.text ?? "", /"mode": "fresh_then_saved"/);
 });
 
 function register(transport: WebsTransport): {
